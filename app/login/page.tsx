@@ -55,8 +55,8 @@ export default function LoginPage() {
       {sent ? (
         <div
           style={{
-            background: "var(--sage-100)",
-            color: "var(--sage)",
+            background: "var(--money-100)",
+            color: "var(--money)",
             padding: "16px 18px",
             borderRadius: "var(--radius-sm)",
             fontSize: 15,
@@ -80,7 +80,7 @@ export default function LoginPage() {
           <button onClick={send} disabled={busy} style={primaryBtn}>
             {busy ? "…" : "Send magic link"}
           </button>
-          {err && <p style={{ color: "var(--clay)", fontSize: 14, margin: 0 }}>{err}</p>}
+          {err && <p style={{ color: "var(--danger)", fontSize: 14, margin: 0 }}>{err}</p>}
         </div>
       )}
     </main>

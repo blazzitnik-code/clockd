@@ -14,6 +14,7 @@ export const t = {
   startNow: { en: "Start now", sl: "Začni zdaj" },
   endNow: { en: "End now", sl: "Končaj zdaj" },
   running: { en: "Running", sl: "V teku" },
+  runningSince: { en: "Running since", sl: "Teče od" },
   stillWorking: { en: "Still working?", sl: "Še delaš?" },
   addEntry: { en: "Add entry", sl: "Dodaj vnos" },
   editEntry: { en: "Edit entry", sl: "Uredi vnos" },

@@ -78,9 +78,20 @@ export default function TodayScreen({ entries, settings, companies, onSave, onDe
       {/* Clock */}
       <div style={{ marginTop: 20 }}>
         {running ? (
-          <button onClick={endNow} style={{ ...clockBtn, background: "var(--live)", color: "var(--on-bright)", boxShadow: "0 0 24px rgba(63,169,255,0.35)" }}>
-            <PulseDot /> {L("endNow")} · {fmtHours(rawMinutes(running.start_time, nowTime()) / 60)}
-          </button>
+          <>
+            <div style={liveCard} role="status" aria-live="polite">
+              <span className="figure" style={{ fontSize: 26, display: "flex", alignItems: "center", gap: 10 }}>
+                <PulseDot />
+                {fmtHours(rawMinutes(running.start_time, nowTime()) / 60)}
+                <span style={{ opacity: 0.55, fontWeight: 600 }}>·</span>
+                {eur(netBeforeTax([{ ...running, end_time: nowTime() }], settings, companies), locale)}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.7, marginTop: 4 }}>
+                {L("runningSince")} {running.start_time?.slice(0, 5)}
+              </span>
+            </div>
+            <button onClick={endNow} style={endBtn}>■ {L("endNow")}</button>
+          </>
         ) : (
           <button onClick={startNow} style={clockBtn}>
             ▶ {L("startNow")}
@@ -151,7 +162,7 @@ export function EntryRow({ entry, settings, companies = [], locale, onClick }: {
       <div style={{ textAlign: "right" }}>
         {isRunning ? (
           <>
-            <span className="figure" style={{ fontSize: 15, color: "var(--live)" }}>{fmtHours(rawMinutes(entry.start_time, live!.end_time) / 60)}</span>
+            <span className="figure" style={{ fontSize: 15, color: "var(--active)" }}>{fmtHours(rawMinutes(entry.start_time, live!.end_time) / 60)}</span>
             <span style={{ display: "block", fontSize: 13, color: "var(--text-soft)" }}>{eur(netBeforeTax([live!], settings, companies), locale)} {L("soFar")}</span>
           </>
         ) : isPlanned ? (
@@ -172,7 +183,7 @@ function nowTime(): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 function PulseDot() {
-  return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: "currentColor", marginRight: 4 }} />;
+  return <span aria-hidden style={{ display: "inline-block", width: 10, height: 10, borderRadius: 5, background: "currentColor", animation: "live-pulse 1.6s ease-in-out infinite" }} />;
 }
 
 const hero: React.CSSProperties = {
@@ -187,17 +198,28 @@ const clockBtn: React.CSSProperties = {
   background: "var(--grad)", color: "#fff", fontSize: 16, fontWeight: 600,
   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
 };
+const liveCard: React.CSSProperties = {
+  display: "flex", flexDirection: "column", alignItems: "center",
+  padding: "18px 16px 16px", borderRadius: "var(--radius)",
+  background: "var(--active-grad)", color: "var(--on-bright)",
+  animation: "live-glow 2.4s ease-in-out infinite",
+};
+const endBtn: React.CSSProperties = {
+  display: "block", margin: "10px auto 0", padding: "9px 22px",
+  borderRadius: 999, border: "1px solid var(--line)", background: "var(--surface)",
+  color: "var(--text-soft)", fontSize: 14, fontWeight: 600,
+};
 const manualBtn: React.CSSProperties = {
   width: "100%", padding: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)",
   background: "var(--surface)", color: "var(--text)", fontSize: 15, fontWeight: 600, marginTop: 10,
 };
 const guard: React.CSSProperties = {
-  background: "var(--clay-100)", color: "var(--clay)", padding: "12px 14px",
+  background: "var(--danger-100)", color: "var(--danger)", padding: "12px 14px",
   borderRadius: "var(--radius-sm)", marginTop: 14, fontSize: 14, fontWeight: 500,
   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
 };
 const guardBtn: React.CSSProperties = {
-  border: "none", background: "var(--clay)", color: "var(--on-bright)", padding: "6px 12px",
+  border: "none", background: "var(--danger)", color: "var(--on-bright)", padding: "6px 12px",
   borderRadius: 8, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
 };
 const sectionTitle: React.CSSProperties = { fontSize: 14, fontWeight: 700, margin: "26px 0 12px", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-soft)" };

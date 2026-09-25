@@ -225,7 +225,7 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
               <span style={{ fontSize: 13, color: "var(--text-soft)", flex: 1 }}>{fmtDate(r.valid_from)}</span>
               <button onClick={() => startEdit(r)} style={iconBtn} aria-label={L("editRate")}>✎</button>
               {rates.length > 1 && (
-                <button onClick={() => setConfirm({ kind: "rate", rate: r })} style={{ ...iconBtn, color: "var(--clay)" }} aria-label={L("delete")}>✕</button>
+                <button onClick={() => setConfirm({ kind: "rate", rate: r })} style={{ ...iconBtn, color: "var(--danger)" }} aria-label={L("delete")}>✕</button>
               )}
             </div>
           ))}
@@ -252,7 +252,7 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
             <button onClick={startNew} style={{ ...outlineBtn, marginTop: 12, width: "100%" }}>+ {L("newRate")}</button>
           )}
 
-          <button onClick={() => setConfirm({ kind: "company" })} style={{ ...deleteBtn, marginTop: 14, width: "100%", fontSize: 13, color: "var(--clay)" }}>{L("deleteCompany")}</button>
+          <button onClick={() => setConfirm({ kind: "company" })} style={{ ...deleteBtn, marginTop: 14, width: "100%", fontSize: 13, color: "var(--danger)" }}>{L("deleteCompany")}</button>
         </div>
       )}
 
@@ -285,7 +285,7 @@ function ConfirmDialog({ title, subject, body, meta, confirmLabel, cancelLabel, 
         <h3 id="confirm-title" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{title}</h3>
         <p style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{subject}</p>
         <p style={{ margin: "10px 0 0", fontSize: 14, color: "var(--text-soft)", lineHeight: 1.5 }}>{body}</p>
-        {meta && <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--clay)", fontWeight: 600 }}>{meta}</p>}
+        {meta && <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--danger)", fontWeight: 600 }}>{meta}</p>}
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
           <button onClick={onCancel} style={{ ...cancelBtn, flex: 1 }} autoFocus>{cancelLabel}</button>
           <button onClick={onConfirm} style={dangerBtn}>{confirmLabel}</button>
@@ -325,7 +325,7 @@ const segIdle: React.CSSProperties = { flex: 1, padding: "10px", borderRadius: 7
 const outlineBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--ink)", background: "var(--surface)", color: "var(--ink)", fontSize: 14, fontWeight: 600 };
 const primaryBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "none", background: "var(--grad)", color: "#fff", fontSize: 14, fontWeight: 600 };
 const cancelBtn: React.CSSProperties = { padding: "13px 18px", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text-soft)", fontSize: 14, fontWeight: 600 };
-const signOutBtn: React.CSSProperties = { width: "100%", padding: 14, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--clay)", fontSize: 15, fontWeight: 600, marginTop: 10 };
+const signOutBtn: React.CSSProperties = { width: "100%", padding: 14, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text-soft)", fontSize: 15, fontWeight: 600, marginTop: 10 };
 const companyRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: "var(--radius-sm)", background: "var(--surface-2)", border: "1px solid var(--line)" };
 const deleteBtn: React.CSSProperties = { border: "none", background: "transparent", color: "var(--text-faint)", fontSize: 14, padding: "4px 6px", borderRadius: 6 };
 const companyHead: React.CSSProperties = { display: "flex", alignItems: "center", gap: 4, width: "100%", padding: "11px 12px", border: "none", background: "transparent", color: "var(--text)" };
@@ -333,4 +333,4 @@ const iconBtn: React.CSSProperties = { border: "1px solid var(--line)", backgrou
 const subHead: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "10px 0 6px" };
 const dialogOverlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(8,4,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 60 };
 const dialogBox: React.CSSProperties = { width: "100%", maxWidth: 360, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" };
-const dangerBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "none", background: "var(--clay)", color: "var(--on-bright)", fontSize: 14, fontWeight: 700 };
+const dangerBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "none", background: "var(--danger)", color: "var(--on-bright)", fontSize: 14, fontWeight: 700 };

@@ -1,25 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  /* Midnight purple — Miami Vice */
-  --paper: #120a24;        /* app background: midnight */
-  --surface: #1c1236;      /* cards */
-  --surface-2: #241844;    /* insets, segmented tracks */
-  --line: #362a5c;
+  /* ── Clockd palette (locked) ─────────────────────────────────────
+     Base      background near-black navy · cards dark purple · subtle purple borders
+     Brand     purple → pink gradient (primary CTAs, selections, logo)
+     Active    cyan / turquoise (running timer, active tab, today)
+     Money     mint cyan-green (earnings, positive)
+     Danger    red — only for destructive actions and real warnings
+     ─────────────────────────────────────────────────────────────── */
+  --paper: #0c0a1d;
+  --surface: #1a1233;
+  --surface-2: #221840;
+  --line: #33285a;
   --text: #f4efff;
   --text-soft: #b8acd8;
   --text-faint: #7e73a3;
-  --ink: #ff5fb0;          /* neon pink: accents, active states, text links */
+
+  --ink: #ff5fb0;
   --ink-600: #ff8dc8;
   --ink-100: rgba(255, 95, 176, 0.14);
-  --grad: linear-gradient(135deg, #7b2ff7 0%, #e0379b 100%); /* purple -> pink sunset */
-  --sage: #2ee6d6;         /* cyan: money / positive */
-  --sage-100: rgba(46, 230, 214, 0.14);
-  --live: #3fa9ff;         /* neon blue: running timer */
-  --live-100: rgba(63, 169, 255, 0.14);
-  --clay: #ff6f7d;         /* coral rose: warnings, holidays, destructive */
-  --clay-100: rgba(255, 111, 125, 0.14);
-  --on-bright: #1a0b24;    /* text on cyan/blue/coral fills */
+  --grad: linear-gradient(135deg, #7b2ff7 0%, #e0379b 100%);
+
+  --active: #22d3ee;
+  --active-100: rgba(34, 211, 238, 0.14);
+  --active-grad: linear-gradient(135deg, #06b6d4 0%, #2ee6d6 100%);
+
+  --money: #3ee6a8;
+  --money-100: rgba(62, 230, 168, 0.14);
+
+  --danger: #ff4d6d;
+  --danger-100: rgba(255, 77, 109, 0.14);
+
+  --on-bright: #0c0a1d;    /* text on cyan / mint / red fills */
   --radius: 16px;
   --radius-sm: 10px;
 }
@@ -56,6 +68,15 @@ input, select { font-family: inherit; }
   100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+@keyframes live-glow {
+  0%, 100% { box-shadow: 0 0 18px rgba(34, 211, 238, 0.25); }
+  50% { box-shadow: 0 0 30px rgba(34, 211, 238, 0.45); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
@@ -68,4 +89,4 @@ input, select { font-family: inherit; }
   border: 2px dashed var(--ink);
   background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255, 95, 176, 0.28) 5px, rgba(255, 95, 176, 0.28) 7px);
 }
-.cell-holiday-dot { background: var(--clay); }
+.cell-holiday-dot { background: var(--ink-600); }

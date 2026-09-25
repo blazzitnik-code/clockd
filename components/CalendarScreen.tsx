@@ -82,9 +82,9 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
                 aspectRatio: "1",
                 borderRadius: 10,
                 border: isSel ? "2px solid var(--ink)" : hasPlanned ? undefined : "1px solid transparent",
-                boxShadow: isToday ? "0 0 0 2px var(--paper), 0 0 0 4px var(--sage)" : undefined,
+                boxShadow: isToday ? "0 0 0 2px var(--paper), 0 0 0 4px var(--active)" : undefined,
                 background: hasWorked ? workedBg : hasPlanned ? undefined : dim ? "transparent" : "var(--surface)",
-                color: hasWorked ? "#fff" : hasPlanned ? undefined : dim ? "var(--text-faint)" : isToday ? "var(--sage)" : "var(--text)",
+                color: hasWorked ? "#fff" : hasPlanned ? undefined : dim ? "var(--text-faint)" : isToday ? "var(--active)" : "var(--text)",
                 fontSize: 14,
                 fontWeight: isToday ? 700 : 500,
                 position: "relative",
@@ -118,7 +118,7 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
         )}
         <Legend swatchClass="cell-planned" label={L("planned")} />
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-soft)" }}>
-          <span style={{ width: 12, height: 12, borderRadius: 4, boxShadow: "0 0 0 2px var(--sage)" }} /> {L("today_")}
+          <span style={{ width: 12, height: 12, borderRadius: 4, boxShadow: "0 0 0 2px var(--active)" }} /> {L("today_")}
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-soft)" }}>
           <span className="cell-holiday-dot" style={{ width: 7, height: 7, borderRadius: 4 }} /> {locale === "sl" ? "Praznik" : "Holiday"}
@@ -133,7 +133,7 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
         <button onClick={() => setEditing({ work_date: selected })} style={addDayBtn}>+ {L("addEntry")}</button>
       </div>
       {holidays[selected] && (
-        <p style={{ fontSize: 13, color: "var(--clay)", margin: "8px 0 0" }}>● {holidays[selected][locale]}</p>
+        <p style={{ fontSize: 13, color: "var(--ink-600)", margin: "8px 0 0" }}>● {holidays[selected][locale]}</p>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
         {selectedEntries.length === 0 ? (
@@ -180,4 +180,4 @@ const gridStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: "
 const navBtn: React.CSSProperties = { border: "1px solid var(--line)", background: "var(--surface)", width: 36, height: 36, borderRadius: 10, fontSize: 18, color: "var(--text)" };
 const legend: React.CSSProperties = { display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap" };
 const addDayBtn: React.CSSProperties = { border: "none", background: "var(--ink-100)", color: "var(--ink)", padding: "7px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600 };
-const confirmBtn: React.CSSProperties = { border: "none", background: "var(--sage-100)", color: "var(--sage)", padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, marginTop: 6, width: "100%" };
+const confirmBtn: React.CSSProperties = { border: "none", background: "var(--money-100)", color: "var(--money)", padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, marginTop: 6, width: "100%" };

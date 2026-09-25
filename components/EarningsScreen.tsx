@@ -191,14 +191,14 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
           <div style={{
             width: `${allowancePct}%`,
             height: "100%",
-            background: overLimit ? "var(--clay)" : nearLimit ? "var(--clay)" : "var(--sage)",
+            background: overLimit ? "var(--danger)" : nearLimit ? "var(--danger)" : "var(--money)",
             borderRadius: 6,
             transition: "width 0.4s ease",
           }} />
         </div>
         <span style={{ fontSize: 12, color: "var(--text-soft)" }}>{allowancePct.toFixed(0)}% {L("allowanceUsed")}</span>
-        {nearLimit && <p style={{ fontSize: 13, color: "var(--clay)", margin: "8px 0 0", fontWeight: 500 }}>{L("allowanceNearLimit")}</p>}
-        {overLimit && <p style={{ fontSize: 13, color: "var(--clay)", margin: "8px 0 0", fontWeight: 500 }}>{L("allowanceOverLimit")}</p>}
+        {nearLimit && <p style={{ fontSize: 13, color: "var(--danger)", margin: "8px 0 0", fontWeight: 500 }}>{L("allowanceNearLimit")}</p>}
+        {overLimit && <p style={{ fontSize: 13, color: "var(--danger)", margin: "8px 0 0", fontWeight: 500 }}>{L("allowanceOverLimit")}</p>}
       </div>
 
       {b.hours === 0 && (

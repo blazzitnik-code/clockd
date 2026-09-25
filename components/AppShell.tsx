@@ -93,7 +93,7 @@ export default function AppShell() {
       {toast && (
         <div role="status" aria-live="polite" style={toastBox} onClick={() => setToast(null)}>
           <span style={{ fontSize: 17, fontWeight: 700 }}>{toast.hours}</span>
-          <span className="figure" style={{ fontSize: 15, fontWeight: 600, color: "var(--sage)" }}>{toast.money}</span>
+          <span className="figure" style={{ fontSize: 15, fontWeight: 600, color: "var(--money)" }}>{toast.money}</span>
         </div>
       )}
     </div>
@@ -106,7 +106,7 @@ function TabBtn({ active, onClick, label, icon }: { active: boolean; onClick: ()
     <button onClick={onClick} style={{
       flex: 1, border: "none", background: "transparent",
       display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-      padding: "8px 0", color: active ? "var(--ink)" : "var(--text-faint)",
+      padding: "8px 0", color: active ? "var(--active)" : "var(--text-faint)",
       fontSize: 11, fontWeight: 600,
     }}>
       {icon}
@@ -119,7 +119,7 @@ const topBar: React.CSSProperties = {
   position: "sticky", top: 0, zIndex: 20,
   display: "flex", alignItems: "center", justifyContent: "space-between",
   padding: "calc(12px + env(safe-area-inset-top)) 18px 12px",
-  background: "rgba(18,10,36,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+  background: "rgba(12,10,29,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
   borderBottom: "1px solid var(--line)",
 };
 

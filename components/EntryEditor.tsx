@@ -286,7 +286,7 @@ const saveBtn: React.CSSProperties = {
 };
 const deleteBtn: React.CSSProperties = {
   width: "100%", padding: 13, borderRadius: "var(--radius-sm)", border: "none",
-  background: "transparent", color: "var(--clay)", fontSize: 15, fontWeight: 600, marginTop: 8,
+  background: "transparent", color: "var(--danger)", fontSize: 15, fontWeight: 600, marginTop: 8,
 };
 const closeBtn: React.CSSProperties = {
   border: "none", background: "var(--surface-2)", width: 32, height: 32,
