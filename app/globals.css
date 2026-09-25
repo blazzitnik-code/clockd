@@ -1,25 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #1f3a8a;
-  --ink-600: #2944a3;
-  --ink-100: #e7ebfa;
-  --paper: #f6f4ef;
-  --surface: #ffffff;
-  --surface-2: #fbfaf7;
-  --line: #e8e4db;
-  --text: #1a1d24;
-  --text-soft: #5b6170;
-  --text-faint: #9aa0ad;
-  --sage: #2f7d6b;
-  --sage-100: #e3f1ec;
-  --clay: #b9612f;
-  --clay-100: #f6e7dd;
+  /* Midnight purple — Miami Vice */
+  --paper: #120a24;        /* app background: midnight */
+  --surface: #1c1236;      /* cards */
+  --surface-2: #241844;    /* insets, segmented tracks */
+  --line: #362a5c;
+  --text: #f4efff;
+  --text-soft: #b8acd8;
+  --text-faint: #7e73a3;
+  --ink: #ff5fb0;          /* neon pink: accents, active states, text links */
+  --ink-600: #ff8dc8;
+  --ink-100: rgba(255, 95, 176, 0.14);
+  --grad: linear-gradient(135deg, #7b2ff7 0%, #e0379b 100%); /* purple -> pink sunset */
+  --sage: #2ee6d6;         /* cyan: money / positive */
+  --sage-100: rgba(46, 230, 214, 0.14);
+  --live: #3fa9ff;         /* neon blue: running timer */
+  --live-100: rgba(63, 169, 255, 0.14);
+  --clay: #ff6f7d;         /* coral rose: warnings, holidays, destructive */
+  --clay-100: rgba(255, 111, 125, 0.14);
+  --on-bright: #1a0b24;    /* text on cyan/blue/coral fills */
   --radius: 16px;
   --radius-sm: 10px;
 }
 
 * { box-sizing: border-box; }
+
+html { color-scheme: dark; }
 
 html, body {
   margin: 0; padding: 0;
@@ -44,14 +51,21 @@ input, select { font-family: inherit; }
   border-radius: 4px;
 }
 
+@keyframes toast-in {
+  0% { transform: translateY(16px) scale(0.96); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
 
-.cell-worked { background: var(--ink); color: #fff; }
+.cell-worked { background: var(--grad); color: #fff; }
 .cell-planned {
-  background: var(--ink-100);
-  color: var(--ink);
-  border: 2px dashed var(--ink-600);
+  background-color: var(--surface);
+  color: var(--ink-600);
+  font-weight: 700;
+  border: 2px dashed var(--ink);
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255, 95, 176, 0.28) 5px, rgba(255, 95, 176, 0.28) 7px);
 }
 .cell-holiday-dot { background: var(--clay); }

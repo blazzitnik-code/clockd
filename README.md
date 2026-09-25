@@ -1,4 +1,4 @@
-# Hours — student work-hours & earnings tracker
+# Clockd — Your time. Your money.
 
 Track shifts, see real net earnings (Slovenian student-work model), plan ahead on a calendar. Next.js 16 + Supabase. Same stack as Only3.
 

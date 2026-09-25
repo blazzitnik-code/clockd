@@ -209,7 +209,7 @@ function Field({ label, children, flex }: { label: string; children: React.React
 }
 
 const overlay: React.CSSProperties = {
-  position: "fixed", inset: 0, background: "rgba(26,29,36,0.4)",
+  position: "fixed", inset: 0, background: "rgba(8,4,18,0.65)",
   display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50,
 };
 const sheet: React.CSSProperties = {
@@ -231,7 +231,7 @@ const segmented: React.CSSProperties = {
 };
 const segActive: React.CSSProperties = {
   flex: 1, padding: "10px", borderRadius: 7, border: "none",
-  background: "var(--ink)", color: "#fff", fontWeight: 600, fontSize: 14,
+  background: "var(--grad)", color: "#fff", fontWeight: 600, fontSize: 14,
 };
 const segIdle: React.CSSProperties = {
   flex: 1, padding: "10px", borderRadius: 7, border: "none",
@@ -239,7 +239,7 @@ const segIdle: React.CSSProperties = {
 };
 const saveBtn: React.CSSProperties = {
   width: "100%", padding: 15, borderRadius: "var(--radius-sm)", border: "none",
-  background: "var(--ink)", color: "#fff", fontSize: 16, fontWeight: 600, marginTop: 6,
+  background: "var(--grad)", color: "#fff", fontSize: 16, fontWeight: 600, marginTop: 6,
 };
 const deleteBtn: React.CSSProperties = {
   width: "100%", padding: 13, borderRadius: "var(--radius-sm)", border: "none",

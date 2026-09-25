@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Company, Entry, Settings, netBeforeTax, eur, fmtHours, entryHours, rawMinutes } from "@/lib/earnings";
 import { Locale, tr } from "@/lib/i18n";
 import { localISO, weekRange, monthRange } from "@/lib/dates";
@@ -19,9 +19,17 @@ export default function TodayScreen({ entries, settings, companies, onSave, onDe
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
   const today = localISO(new Date());
   const [editing, setEditing] = useState<Partial<Entry> | null>(null);
+  // tick every 30s so the running session's time + money stay live
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const todays = entries.filter((e) => e.work_date === today);
-  const running = todays.find((e) => e.status === "worked" && !e.end_time);
+  const running = todays.find(
+    (e) => e.status === "worked" && !e.end_time && !!e.start_time && e.gross_override == null && e.net_override == null
+  );
 
   const longRunning =
     running &&
@@ -55,23 +63,23 @@ export default function TodayScreen({ entries, settings, companies, onSave, onDe
     <div style={{ padding: "20px 18px 100px" }}>
       {/* Hero: this week + this month net */}
       <div style={{ display: "flex", gap: 10 }}>
-        <div style={{ ...hero, flex: 1 }}>
-          <span style={heroLabel}>{L("netEarnings")} · {L("thisWeek")}</span>
+        <div style={{ ...hero, flex: 1, minWidth: 0 }}>
+          <span style={heroLabel}>{L("netLabel")} · {L("thisWeek")}</span>
           <span className="figure" style={heroFigure}>{eur(weekNet, locale)}</span>
-          <span style={heroSub}>{fmtHours(weekEntries.filter(e=>e.status==="worked"&&e.end_time).reduce((s,e)=>s+entryHours(e,settings),0))} · {L("netBeforeTax").toLowerCase()}</span>
+          <span style={heroSub}>{fmtHours(weekEntries.filter(e=>e.status==="worked"&&e.end_time).reduce((s,e)=>s+entryHours(e,settings),0))}</span>
         </div>
-        <div style={{ ...hero, flex: 1 }}>
-          <span style={heroLabel}>{L("netEarnings")} · {L("thisMonth")}</span>
+        <div style={{ ...hero, flex: 1, minWidth: 0 }}>
+          <span style={heroLabel}>{L("netLabel")} · {L("thisMonth")}</span>
           <span className="figure" style={heroFigure}>{eur(monthNet, locale)}</span>
-          <span style={heroSub}>{fmtHours(monthEntries.filter(e=>e.status==="worked"&&e.end_time).reduce((s,e)=>s+entryHours(e,settings),0))} · {L("netBeforeTax").toLowerCase()}</span>
+          <span style={heroSub}>{fmtHours(monthEntries.filter(e=>e.status==="worked"&&e.end_time).reduce((s,e)=>s+entryHours(e,settings),0))}</span>
         </div>
       </div>
 
       {/* Clock */}
       <div style={{ marginTop: 20 }}>
         {running ? (
-          <button onClick={endNow} style={{ ...clockBtn, background: "var(--clay)" }}>
-            <PulseDot /> {L("endNow")} · {L("running")} {running.start_time?.slice(0, 5)}
+          <button onClick={endNow} style={{ ...clockBtn, background: "var(--live)", color: "var(--on-bright)", boxShadow: "0 0 24px rgba(63,169,255,0.35)" }}>
+            <PulseDot /> {L("endNow")} · {fmtHours(rawMinutes(running.start_time, nowTime()) / 60)}
           </button>
         ) : (
           <button onClick={startNow} style={clockBtn}>
@@ -120,17 +128,17 @@ export default function TodayScreen({ entries, settings, companies, onSave, onDe
 export function EntryRow({ entry, settings, companies = [], locale, onClick }: { entry: Entry; settings: Settings; companies?: Company[]; locale: Locale; onClick: () => void }) {
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
   const isPlanned = entry.status === "planned";
-  const isRunning = entry.status === "worked" && !entry.end_time;
   const isManual = entry.gross_override != null || entry.net_override != null;
+  const isRunning = entry.status === "worked" && !entry.end_time && !isManual && !!entry.start_time;
   const h = entryHours(entry, settings);
   const net = netBeforeTax([entry], settings, companies);
-
+  const live = isRunning ? { ...entry, end_time: nowTime() } : null;
   return (
     <button onClick={onClick} style={{ ...rowCard, ...(isPlanned ? rowPlanned : {}) }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3 }}>
         <span style={{ fontWeight: 600, fontSize: 15 }}>
           {entry.start_time
-            ? `${entry.start_time.slice(0, 5)}${entry.end_time ? `–${entry.end_time.slice(0, 5)}` : ""}`
+            ? `${entry.start_time.slice(0, 5)}${entry.end_time ? `–${entry.end_time.slice(0, 5)}` : "–…"}`
             : "●"}
           {entry.crosses_midnight ? <sup style={{ color: "var(--ink)" }}> +1</sup> : null}
         </span>
@@ -140,7 +148,10 @@ export function EntryRow({ entry, settings, companies = [], locale, onClick }: {
       </div>
       <div style={{ textAlign: "right" }}>
         {isRunning ? (
-          <span style={{ color: "var(--clay)", fontWeight: 600, fontSize: 14 }}>{L("running")}</span>
+          <>
+            <span className="figure" style={{ fontSize: 15, color: "var(--live)" }}>{fmtHours(rawMinutes(entry.start_time, live!.end_time) / 60)}</span>
+            <span style={{ display: "block", fontSize: 13, color: "var(--text-soft)" }}>{eur(netBeforeTax([live!], settings, companies), locale)} {L("soFar")}</span>
+          </>
         ) : isPlanned ? (
           <span style={{ color: "var(--text-faint)", fontSize: 14 }}>—</span>
         ) : (
@@ -159,19 +170,19 @@ function nowTime(): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 function PulseDot() {
-  return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: "#fff", marginRight: 4 }} />;
+  return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: "currentColor", marginRight: 4 }} />;
 }
 
 const hero: React.CSSProperties = {
-  background: "var(--ink)", color: "#fff", borderRadius: "var(--radius)",
-  padding: "22px 22px 20px", display: "flex", flexDirection: "column",
+  background: "var(--grad)", color: "#fff", borderRadius: "var(--radius)",
+  padding: "18px 16px 16px", display: "flex", flexDirection: "column",
 };
 const heroLabel: React.CSSProperties = { fontSize: 13, opacity: 0.8, fontWeight: 500 };
-const heroFigure: React.CSSProperties = { fontSize: 40, margin: "6px 0 2px", lineHeight: 1 };
+const heroFigure: React.CSSProperties = { fontSize: 28, margin: "6px 0 2px", lineHeight: 1, whiteSpace: "nowrap" };
 const heroSub: React.CSSProperties = { fontSize: 13, opacity: 0.75 };
 const clockBtn: React.CSSProperties = {
   width: "100%", padding: 17, borderRadius: "var(--radius)", border: "none",
-  background: "var(--ink)", color: "#fff", fontSize: 16, fontWeight: 600,
+  background: "var(--grad)", color: "#fff", fontSize: 16, fontWeight: 600,
   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
 };
 const manualBtn: React.CSSProperties = {
@@ -184,7 +195,7 @@ const guard: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
 };
 const guardBtn: React.CSSProperties = {
-  border: "none", background: "var(--clay)", color: "#fff", padding: "6px 12px",
+  border: "none", background: "var(--clay)", color: "var(--on-bright)", padding: "6px 12px",
   borderRadius: 8, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
 };
 const sectionTitle: React.CSSProperties = { fontSize: 14, fontWeight: 700, margin: "26px 0 12px", textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-soft)" };

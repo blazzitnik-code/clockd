@@ -71,7 +71,7 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
           // Pick the first company found among worked entries for cell color
           const firstCompanyId = dayEntries.find((e) => e.status === "worked" && e.company_id)?.company_id ?? null;
           const companyIdx = firstCompanyId ? companies.findIndex((c) => c.id === firstCompanyId) : -1;
-          const workedBg = companyIdx >= 0 ? companyColor(companyIdx) : "var(--ink)";
+          const workedBg = companyIdx >= 0 ? companyColor(companyIdx) : "var(--grad)";
 
           return (
             <button
@@ -81,25 +81,23 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
               style={{
                 aspectRatio: "1",
                 borderRadius: 10,
-                border: isSel ? "2px solid var(--ink)" : "1px solid transparent",
+                border: isSel ? "2px solid var(--ink)" : hasPlanned ? undefined : "1px solid transparent",
+                boxShadow: isToday ? "0 0 0 2px var(--paper), 0 0 0 4px var(--sage)" : undefined,
                 background: hasWorked ? workedBg : hasPlanned ? undefined : dim ? "transparent" : "var(--surface)",
-                color: hasWorked ? "#fff" : hasPlanned ? undefined : dim ? "var(--text-faint)" : "var(--text)",
+                color: hasWorked ? "#fff" : hasPlanned ? undefined : dim ? "var(--text-faint)" : isToday ? "var(--sage)" : "var(--text)",
                 fontSize: 14,
                 fontWeight: isToday ? 700 : 500,
                 position: "relative",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: dim ? 0.4 : 1,
+                opacity: dim ? (hasWorked || hasPlanned ? 0.75 : 0.45) : 1,
               }}
               title={holiday ? holiday[locale] : undefined}
             >
               {day.getDate()}
               {holiday && (
                 <span className="cell-holiday-dot" style={{ position: "absolute", bottom: 5, width: 4, height: 4, borderRadius: 2 }} />
-              )}
-              {isToday && !hasWorked && !hasPlanned && (
-                <span style={{ position: "absolute", bottom: 5, width: 4, height: 4, borderRadius: 2, background: "var(--ink)" }} />
               )}
             </button>
           );
@@ -119,6 +117,9 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
           <Legend swatchClass="cell-worked" label={L("worked")} />
         )}
         <Legend swatchClass="cell-planned" label={L("planned")} />
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-soft)" }}>
+          <span style={{ width: 12, height: 12, borderRadius: 4, boxShadow: "0 0 0 2px var(--sage)" }} /> {L("today_")}
+        </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-soft)" }}>
           <span className="cell-holiday-dot" style={{ width: 7, height: 7, borderRadius: 4 }} /> {locale === "sl" ? "Praznik" : "Holiday"}
         </span>

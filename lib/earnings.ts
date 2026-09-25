@@ -145,5 +145,6 @@ export function fmtHours(h: number): string {
   const totalMin = Math.round(h * 60);
   const hh = Math.floor(totalMin / 60);
   const mm = totalMin % 60;
+  if (hh === 0) return `${mm}m`;
   return mm === 0 ? `${hh}h` : `${hh}h ${mm}m`;
 }
