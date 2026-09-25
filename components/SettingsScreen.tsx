@@ -18,7 +18,7 @@ export default function SettingsScreen({ entries, settings, onSave }: Props) {
 
   return (
     <div style={{ padding: "20px 18px 100px" }}>
-      <h2 style={{ fontSize: 22, margin: "0 0 22px" }}>{L("settings")}</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 22px" }}>{L("settings")}</h2>
 
       {/* Rate */}
       <Group title={L("hourlyRate")}>
@@ -105,7 +105,7 @@ function NumRow({ label, value, onChange }: { label: string; value: number; onCh
 
 const input: React.CSSProperties = { padding: "11px 13px", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", fontSize: 16, background: "var(--surface)", color: "var(--text)", width: 130, fontVariantNumeric: "tabular-nums" };
 const segmented: React.CSSProperties = { display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" };
-const segActive: React.CSSProperties = { flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "var(--ink)", color: "#fff", fontWeight: 600, fontSize: 14 };
+const segActive: React.CSSProperties = { flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "var(--grad)", color: "#fff", fontWeight: 600, fontSize: 14 };
 const segIdle: React.CSSProperties = { flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "transparent", color: "var(--text-soft)", fontWeight: 600, fontSize: 14 };
 const outlineBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--ink)", background: "var(--surface)", color: "var(--ink)", fontSize: 14, fontWeight: 600 };
 const signOutBtn: React.CSSProperties = { width: "100%", padding: 14, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--clay)", fontSize: 15, fontWeight: 600, marginTop: 10 };

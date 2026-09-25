@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Entry, Settings, computeBreakdown, entryHours, eur, fmtHours } from "@/lib/earnings";
+import { Entry, Settings, NetBreakdown, computeBreakdown, eur, fmtHours } from "@/lib/earnings";
 import { Locale, tr } from "@/lib/i18n";
-import { weekRange, monthRange, addMonths, format, localISO } from "@/lib/dates";
+import { weekRange, monthRange, addMonths, format } from "@/lib/dates";
 
 interface Props {
   entries: Entry[];
@@ -15,6 +15,7 @@ export default function EarningsScreen({ entries, settings }: Props) {
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
   const [ref, setRef] = useState(new Date());
   const [open, setOpen] = useState(false);
+  const [period, setPeriod] = useState<"month" | "year">("month");
 
   const inRange = (start: Date, end: Date) =>
     entries.filter((e) => {
@@ -24,7 +25,19 @@ export default function EarningsScreen({ entries, settings }: Props) {
 
   const { start: ms, end: me } = monthRange(ref);
   const monthEntries = inRange(ms, me);
-  const b = computeBreakdown(monthEntries, settings);
+  const monthB = computeBreakdown(monthEntries, settings);
+
+  // Year = sum of 12 monthly breakdowns (akontacija is decided per month).
+  const months = Array.from({ length: 12 }, (_, m) => {
+    const r = monthRange(new Date(ref.getFullYear(), m, 1));
+    return computeBreakdown(inRange(r.start, r.end), settings);
+  });
+  const yearB = sumBreakdowns(months);
+  const b = period === "month" ? monthB : yearB;
+  const takeHome = (x: NetBreakdown) => x.netBeforeTax;
+  const maxMonth = Math.max(1, ...months.map(takeHome));
+  const monthLabel = (m: number) =>
+    new Date(ref.getFullYear(), m, 1).toLocaleDateString(locale === "sl" ? "sl-SI" : "en-GB", { month: "short" });
 
   const { start: ws, end: we } = weekRange(new Date());
   const weekB = computeBreakdown(inRange(ws, we), settings);
@@ -41,28 +54,40 @@ export default function EarningsScreen({ entries, settings }: Props) {
     <div style={{ padding: "20px 18px 100px" }}>
       {/* This week (net only) */}
       <div style={smallCard}>
-        <span style={cardLabel}>{L("thisWeek")} · {L("net")}</span>
+        <span style={cardLabel}>{L("netLabel")} · {L("thisWeek")}</span>
         <span className="figure" style={{ fontSize: 26 }}>{eur(weekB.netBeforeTax, locale)}</span>
         <span style={{ fontSize: 12, color: "var(--text-soft)" }}>{fmtHours(weekB.hours)}</span>
       </div>
 
-      {/* Month selector */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "22px 0 12px" }}>
-        <button onClick={() => setRef(addMonths(ref, -1))} style={navBtn}>‹</button>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{format(ref, "LLLL yyyy")}</h2>
-        <button onClick={() => setRef(addMonths(ref, 1))} style={navBtn}>›</button>
+      {/* Month / Year toggle */}
+      <div style={{ ...segmented, marginTop: 22 }} role="tablist">
+        {(["month", "year"] as const).map((p) => (
+          <button key={p} role="tab" aria-selected={period === p} onClick={() => setPeriod(p)} style={period === p ? segActive : segIdle}>
+            {L(p)}
+          </button>
+        ))}
+      </div>
+
+      {/* Period selector */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 12px" }}>
+        <button onClick={() => setRef(addMonths(ref, period === "month" ? -1 : -12))} style={navBtn} aria-label="Previous">‹</button>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{period === "month" ? format(ref, "LLLL yyyy") : ref.getFullYear()}</h2>
+        <button onClick={() => setRef(addMonths(ref, period === "month" ? 1 : 12))} style={navBtn} aria-label="Next">›</button>
       </div>
 
       {/* Monthly breakdown card — mirrors the screenshot */}
       <div style={breakCard}>
         <div style={breakHead}>
-          <span style={{ fontSize: 13, opacity: 0.85 }}>{L("netEarnings")}</span>
+          <span style={{ fontSize: 13, opacity: 0.85 }}>{L("netLabel")} · {period === "month" ? L("month") : L("year")}</span>
           <span className="figure" style={{ fontSize: 36, display: "block", margin: "4px 0 2px" }}>
-            {eur(b.akontacijaApplies ? b.netAfterTax : b.netBeforeTax, locale)}
+            {eur(b.netBeforeTax, locale)}
           </span>
-          <span style={{ fontSize: 12, opacity: 0.8 }}>
-            {fmtHours(b.hours)} · {b.akontacijaApplies ? L("netAfterTax").toLowerCase() : L("netBeforeTax").toLowerCase()}
-          </span>
+          <span style={{ fontSize: 12, opacity: 0.8 }}>{fmtHours(b.hours)}</span>
+          {b.akontacija > 0 && (
+            <span style={advancePill}>
+              −{eur(b.akontacija, locale)} {L("advanceWithheld")} → <b>{eur(b.netAfterTax, locale)}</b> {L("paidOut")}
+            </span>
+          )}
         </div>
 
         <button onClick={() => setOpen(!open)} style={toggle}>
@@ -75,7 +100,7 @@ export default function EarningsScreen({ entries, settings }: Props) {
             <Row label={`${L("piz")} (${settings.piz_pct}%)`} value={`− ${eur(b.piz, locale)}`} muted />
             <Row label={`${L("pdo")} (${settings.pdo_pct}%)`} value={`− ${eur(b.pdo, locale)}`} muted />
             <Row label={L("netBeforeTax")} value={eur(b.netBeforeTax, locale)} bold divider />
-            {b.akontacijaApplies && (
+            {(b.akontacija > 0) && (
               <>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "14px 0 4px" }}>
                   {L("incomeTaxAdvance")}
@@ -83,13 +108,33 @@ export default function EarningsScreen({ entries, settings }: Props) {
                 <Row label={`${L("akontacija")} (${settings.akontacija_pct}% ${L("ofGross")})`} value={`− ${eur(b.akontacija, locale)}`} muted />
                 <Row label={L("netAfterTax")} value={eur(b.netAfterTax, locale)} bold divider />
                 <p style={{ fontSize: 12, color: "var(--text-soft)", lineHeight: 1.5, margin: "12px 0 0" }}>
-                  {L("worstCaseNote")}
+                  {L("advanceHint")}
                 </p>
               </>
             )}
           </div>
         )}
       </div>
+
+      {/* Year: month-by-month */}
+      {period === "year" && (
+        <div style={{ marginTop: 22 }}>
+          <span style={cardLabel}>{L("byMonth")}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+            {months.map((mb, m) => (
+              <div key={m} style={{ display: "grid", gridTemplateColumns: "44px 1fr 86px", alignItems: "center", gap: 10, fontSize: 13 }}>
+                <span style={{ color: "var(--text-soft)", textTransform: "capitalize" }}>{monthLabel(m)}</span>
+                <div style={{ height: 10, borderRadius: 5, background: "var(--surface-2)", overflow: "hidden" }}>
+                  <div style={{ width: `${(takeHome(mb) / maxMonth) * 100}%`, height: "100%", background: "var(--grad)", borderRadius: 5 }} />
+                </div>
+                <span className="figure" style={{ textAlign: "right", fontWeight: 600, color: mb.hours ? "var(--text)" : "var(--text-faint)" }}>
+                  {mb.hours ? eur(takeHome(mb), locale) : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Annual allowance */}
       <div style={{ marginTop: 22 }}>
@@ -113,8 +158,8 @@ export default function EarningsScreen({ entries, settings }: Props) {
         {overLimit && <p style={{ fontSize: 13, color: "var(--clay)", margin: "8px 0 0", fontWeight: 500 }}>{L("allowanceOverLimit")}</p>}
       </div>
 
-      {monthEntries.filter(e=>e.status==="worked"&&e.end_time).length === 0 && (
-        <p style={{ color: "var(--text-faint)", fontSize: 14, marginTop: 20 }}>{L("noEntriesMonth")}</p>
+      {b.hours === 0 && (
+        <p style={{ color: "var(--text-faint)", fontSize: 14, marginTop: 20 }}>{L(period === "month" ? "noEntriesMonth" : "noEntriesYear")}</p>
       )}
     </div>
   );
@@ -136,7 +181,21 @@ function Row({ label, value, muted, bold, divider }: { label: string; value: str
 const smallCard: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 2 };
 const cardLabel: React.CSSProperties = { fontSize: 12, color: "var(--text-soft)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" };
 const breakCard: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", overflow: "hidden" };
-const breakHead: React.CSSProperties = { background: "var(--ink)", color: "#fff", padding: "20px 18px 16px" };
+const breakHead: React.CSSProperties = { background: "var(--grad)", color: "#fff", padding: "20px 18px 16px" };
 const toggle: React.CSSProperties = { width: "100%", padding: "12px", border: "none", borderBottom: "1px solid var(--line)", background: "var(--surface-2)", color: "var(--ink)", fontSize: 13, fontWeight: 600 };
 const navBtn: React.CSSProperties = { border: "1px solid var(--line)", background: "var(--surface)", width: 36, height: 36, borderRadius: 10, fontSize: 18, color: "var(--text)" };
+const advancePill: React.CSSProperties = { display: "inline-block", marginTop: 12, padding: "6px 10px", borderRadius: 8, background: "rgba(18,10,36,0.35)", fontSize: 12, lineHeight: 1.4 };
+const segmented: React.CSSProperties = { display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" };
+const segActive: React.CSSProperties = { flex: 1, padding: "9px", borderRadius: 7, border: "none", background: "var(--grad)", color: "#fff", fontWeight: 600, fontSize: 14 };
+const segIdle: React.CSSProperties = { flex: 1, padding: "9px", borderRadius: 7, border: "none", background: "transparent", color: "var(--text-soft)", fontWeight: 600, fontSize: 14 };
 const barTrack: React.CSSProperties = { height: 12, background: "var(--line)", borderRadius: 6, overflow: "hidden", marginBottom: 6 };
+
+function sumBreakdowns(list: NetBreakdown[]): NetBreakdown {
+  const add = (k: keyof NetBreakdown) => list.reduce((s, x) => s + (x[k] as number), 0);
+  const akontacija = add("akontacija");
+  return {
+    hours: add("hours"), gross: add("gross"), piz: add("piz"), pdo: add("pdo"),
+    netBeforeTax: add("netBeforeTax"), akontacija, netAfterTax: add("netBeforeTax") - akontacija,
+    akontacijaApplies: akontacija > 0,
+  };
+}

@@ -3,11 +3,12 @@
 export type Locale = "en" | "sl";
 
 export const t = {
-  appName: { en: "Hours", sl: "Ure" },
+  appName: { en: "Clockd", sl: "Clockd" },
   // nav
   today: { en: "Today", sl: "Danes" },
   calendar: { en: "Calendar", sl: "Koledar" },
   earnings: { en: "Earnings", sl: "Zaslužek" },
+  money: { en: "Money", sl: "Denar" },
   settings: { en: "Settings", sl: "Nastavitve" },
   // clocking
   startNow: { en: "Start now", sl: "Začni zdaj" },
@@ -35,6 +36,22 @@ export const t = {
   hours: { en: "Hours", sl: "Ure" },
   thisWeek: { en: "This week", sl: "Ta teden" },
   thisMonth: { en: "This month", sl: "Ta mesec" },
+  month: { en: "Month", sl: "Mesec" },
+  year: { en: "Year", sl: "Leto" },
+  byMonth: { en: "By month", sl: "Po mesecih" },
+  noEntriesYear: { en: "Nothing logged this year yet.", sl: "Letos še ni vnosov." },
+  today_: { en: "Today", sl: "Danes" },
+  soFar: { en: "so far", sl: "do zdaj" },
+  netLabel: { en: "Net", sl: "Neto" },
+  advanceWithheld: { en: "advance withheld", sl: "akontacija" },
+  paidOut: { en: "paid out", sl: "izplačilo" },
+  advanceHint: {
+    en: "Monthly gross over the threshold, so the payer withholds a tax advance. It's usually refunded at annual assessment.",
+    sl: "Mesečni bruto nad pragom, zato izplačevalec odtegne akontacijo. Ob letni odmeri se praviloma vrne.",
+  },
+  logged: { en: "logged", sl: "zabeleženo" },
+  earnedToday: { en: "earned today", sl: "zasluženo danes" },
+  earnedOn: { en: "earned on", sl: "zasluženo" },
   netEarnings: { en: "Your net earnings", sl: "Vaš neto zaslužek" },
   netBeforeTax: { en: "Net before income tax", sl: "Neto pred dohodnino" },
   grossEarnings: { en: "Gross earnings", sl: "Bruto zaslužek" },

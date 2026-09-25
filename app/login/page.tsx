@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Wordmark from "@/components/Wordmark";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,29 +34,19 @@ export default function LoginPage() {
       }}
     >
       <div style={{ marginBottom: 40 }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 10,
-            marginBottom: 28,
-          }}
-        >
-          <Logo />
-          <span style={{ fontWeight: 700, fontSize: 20 }}>Hours</span>
+        <div style={{ marginBottom: 28 }}>
+          <Wordmark />
         </div>
-        <h1
+        <p
           style={{
-            fontSize: 30,
-            lineHeight: 1.15,
-            margin: "0 0 12px",
-            letterSpacing: "-0.02em",
+            fontSize: 17,
+            fontWeight: 500,
+            color: "var(--text-soft)",
+            margin: "14px 0 24px",
           }}
         >
-          Track your hours.
-          <br />
-          See what you really earn.
-        </h1>
+          Your time. Your money.
+        </p>
         <p style={{ color: "var(--text-soft)", margin: 0, fontSize: 15 }}>
           Clock in, clock out, and watch gross turn into the net that actually
           lands in your account.
@@ -96,21 +87,6 @@ export default function LoginPage() {
   );
 }
 
-function Logo() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-      <rect width="30" height="30" rx="9" fill="var(--ink)" />
-      <circle cx="15" cy="15" r="8" stroke="#fff" strokeWidth="1.8" />
-      <path
-        d="M15 10.5V15L18 17"
-        stroke="#fff"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 const inputStyle: React.CSSProperties = {
   padding: "14px 16px",
   borderRadius: "var(--radius-sm)",
@@ -124,7 +100,7 @@ const primaryBtn: React.CSSProperties = {
   padding: "14px 16px",
   borderRadius: "var(--radius-sm)",
   border: "none",
-  background: "var(--ink)",
+  background: "var(--grad)",
   color: "#fff",
   fontSize: 16,
   fontWeight: 600,

@@ -76,25 +76,23 @@ export default function CalendarScreen({ entries, settings, onSave, onDelete }: 
               style={{
                 aspectRatio: "1",
                 borderRadius: 10,
-                border: isSel ? "2px solid var(--ink)" : "1px solid transparent",
+                border: isSel ? "2px solid var(--ink)" : cls === "cell-planned" ? undefined : "1px solid transparent",
+                boxShadow: isToday ? "0 0 0 2px var(--paper), 0 0 0 4px var(--sage)" : undefined,
                 background: cls ? undefined : dim ? "transparent" : "var(--surface)",
-                color: cls ? undefined : dim ? "var(--text-faint)" : "var(--text)",
+                color: cls ? undefined : dim ? "var(--text-faint)" : isToday ? "var(--sage)" : "var(--text)",
                 fontSize: 14,
                 fontWeight: isToday ? 700 : 500,
                 position: "relative",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: dim ? 0.4 : 1,
+                opacity: dim ? (cls ? 0.75 : 0.45) : 1,
               }}
               title={holiday ? holiday[locale] : undefined}
             >
               {day.getDate()}
               {holiday && (
                 <span className="cell-holiday-dot" style={{ position: "absolute", bottom: 5, width: 4, height: 4, borderRadius: 2 }} />
-              )}
-              {isToday && !cls && (
-                <span style={{ position: "absolute", bottom: 5, width: 4, height: 4, borderRadius: 2, background: "var(--ink)" }} />
               )}
             </button>
           );
@@ -105,6 +103,9 @@ export default function CalendarScreen({ entries, settings, onSave, onDelete }: 
       <div style={legend}>
         <Legend swatchClass="cell-worked" label={L("worked")} />
         <Legend swatchClass="cell-planned" label={L("planned")} />
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-soft)" }}>
+          <span style={{ width: 12, height: 12, borderRadius: 4, boxShadow: "0 0 0 2px var(--sage)" }} /> {L("today_")}
+        </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-soft)" }}>
           <span className="cell-holiday-dot" style={{ width: 7, height: 7, borderRadius: 4 }} /> {locale === "sl" ? "Praznik" : "Holiday"}
         </span>
