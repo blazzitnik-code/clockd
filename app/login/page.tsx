@@ -8,17 +8,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const supabase = createClient();
 
   async function send() {
     if (!email) return;
     setBusy(true);
-    await supabase.auth.signInWithOtp({
+    setErr(null);
+    const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     setBusy(false);
-    setSent(true);
+    if (error) setErr(error.message);
+    else setSent(true);
   }
 
   return (
@@ -77,6 +80,7 @@ export default function LoginPage() {
           <button onClick={send} disabled={busy} style={primaryBtn}>
             {busy ? "…" : "Send magic link"}
           </button>
+          {err && <p style={{ color: "var(--clay)", fontSize: 14, margin: 0 }}>{err}</p>}
         </div>
       )}
     </main>

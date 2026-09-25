@@ -39,13 +39,9 @@ export function useData() {
     let cancelled = false;
     async function init() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        const { error: signInError } = await supabase.auth.signInAnonymously();
-        if (signInError) {
-          setError(`Auth failed: ${signInError.message}`);
-          setLoading(false);
-          return;
-        }
+      if (!session || session.user.is_anonymous) {
+        location.href = "/login";
+        return;
       }
       if (!cancelled) load();
     }
@@ -54,11 +50,8 @@ export function useData() {
   }, []);
 
   const ensureUser = useCallback(async () => {
-    let { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      const { data } = await supabase.auth.signInAnonymously();
-      user = data.user;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.is_anonymous) location.href = "/login";
     return user;
   }, [supabase]);
 
