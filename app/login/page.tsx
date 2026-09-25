@@ -34,7 +34,7 @@ export default function LoginPage() {
       }}
     >
       <div style={{ marginBottom: 40 }}>
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 10 }}>
           <Wordmark />
         </div>
         <p
@@ -42,14 +42,10 @@ export default function LoginPage() {
             fontSize: 17,
             fontWeight: 500,
             color: "var(--text-soft)",
-            margin: "14px 0 24px",
+            margin: 0,
           }}
         >
           Your time. Your money.
-        </p>
-        <p style={{ color: "var(--text-soft)", margin: 0, fontSize: 15 }}>
-          Clock in, clock out, and watch gross turn into the net that actually
-          lands in your account.
         </p>
       </div>
 
