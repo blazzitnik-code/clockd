@@ -58,6 +58,8 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
               onToggle={() => setOpenId(openId === c.id ? null : c.id)}
               onSaveRate={onSaveRate}
               onDeleteRate={onDeleteRate}
+              entryCount={entries.filter((e) => e.company_id === c.id).length}
+              onRename={(name) => onSaveCompany({ id: c.id, name })}
               onDelete={() => { onDeleteCompany(c.id); setOpenId(null); }}
             />
           ))}
@@ -155,10 +157,14 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
   );
 }
 
-function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate, onDelete }: {
+function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate, onDelete, onRename, entryCount }: {
   company: Company; locale: Locale; open: boolean; onToggle: () => void;
   onSaveRate: Props["onSaveRate"]; onDeleteRate: Props["onDeleteRate"]; onDelete: () => void;
+  onRename: (name: string) => void; entryCount: number;
 }) {
+  const [name, setName] = useState(company.name);
+  const [confirm, setConfirm] = useState<null | { kind: "company" } | { kind: "rate"; rate: CompanyRate }>(null);
+  const nameChanged = name.trim() !== "" && name.trim() !== company.name;
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
   const rates = [...(company.rates ?? [])].sort((a, b) => (a.valid_from < b.valid_from ? 1 : -1)); // newest first
   const [editing, setEditing] = useState<CompanyRate | null>(null);
@@ -199,6 +205,15 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
 
       {open && (
         <div style={{ padding: "4px 14px 14px", borderTop: "1px solid var(--line)" }}>
+          <div style={subHead}>{L("companyNameLabel")}</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && nameChanged && onRename(name.trim())}
+              style={{ ...input, flex: 1, width: "auto", minWidth: 0 }} aria-label={L("companyNameLabel")} />
+            {nameChanged && (
+              <button onClick={() => onRename(name.trim())} style={{ ...primaryBtn, flex: "none", padding: "0 16px" }}>{L("save")}</button>
+            )}
+          </div>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "10px 0 6px" }}>
             {L("rates")}
           </div>
@@ -210,7 +225,7 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
               <span style={{ fontSize: 13, color: "var(--text-soft)", flex: 1 }}>{fmtDate(r.valid_from)}</span>
               <button onClick={() => startEdit(r)} style={iconBtn} aria-label={L("editRate")}>✎</button>
               {rates.length > 1 && (
-                <button onClick={() => onDeleteRate(r)} style={{ ...iconBtn, color: "var(--clay)" }} aria-label={L("delete")}>✕</button>
+                <button onClick={() => setConfirm({ kind: "rate", rate: r })} style={{ ...iconBtn, color: "var(--clay)" }} aria-label={L("delete")}>✕</button>
               )}
             </div>
           ))}
@@ -237,9 +252,45 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
             <button onClick={startNew} style={{ ...outlineBtn, marginTop: 12, width: "100%" }}>+ {L("newRate")}</button>
           )}
 
-          <button onClick={onDelete} style={{ ...deleteBtn, marginTop: 14, width: "100%", fontSize: 13, color: "var(--clay)" }}>{L("deleteCompany")}</button>
+          <button onClick={() => setConfirm({ kind: "company" })} style={{ ...deleteBtn, marginTop: 14, width: "100%", fontSize: 13, color: "var(--clay)" }}>{L("deleteCompany")}</button>
         </div>
       )}
+
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.kind === "company" ? `${L("deleteCompanyQ")}` : L("deleteRateQ")}
+          subject={confirm.kind === "company" ? company.name : `${eur(Number(confirm.rate.gross_rate), locale)}/h · ${fmtDate(confirm.rate.valid_from)}`}
+          body={confirm.kind === "company" ? L("deleteCompanyBody") : L("deleteRateBody")}
+          meta={confirm.kind === "company" && entryCount > 0 ? `${L("entriesAffected")}: ${entryCount}` : undefined}
+          confirmLabel={L("yesDelete")}
+          cancelLabel={L("cancel")}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            if (confirm.kind === "company") onDelete(); else onDeleteRate(confirm.rate);
+            setConfirm(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ConfirmDialog({ title, subject, body, meta, confirmLabel, cancelLabel, onConfirm, onCancel }: {
+  title: string; subject: string; body: string; meta?: string;
+  confirmLabel: string; cancelLabel: string; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div style={dialogOverlay} onClick={onCancel}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" style={dialogBox} onClick={(e) => e.stopPropagation()}>
+        <h3 id="confirm-title" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{title}</h3>
+        <p style={{ margin: "8px 0 0", fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{subject}</p>
+        <p style={{ margin: "10px 0 0", fontSize: 14, color: "var(--text-soft)", lineHeight: 1.5 }}>{body}</p>
+        {meta && <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--clay)", fontWeight: 600 }}>{meta}</p>}
+        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <button onClick={onCancel} style={{ ...cancelBtn, flex: 1 }} autoFocus>{cancelLabel}</button>
+          <button onClick={onConfirm} style={dangerBtn}>{confirmLabel}</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -279,3 +330,7 @@ const companyRow: React.CSSProperties = { display: "flex", justifyContent: "spac
 const deleteBtn: React.CSSProperties = { border: "none", background: "transparent", color: "var(--text-faint)", fontSize: 14, padding: "4px 6px", borderRadius: 6 };
 const companyHead: React.CSSProperties = { display: "flex", alignItems: "center", gap: 4, width: "100%", padding: "11px 12px", border: "none", background: "transparent", color: "var(--text)" };
 const iconBtn: React.CSSProperties = { border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text-soft)", width: 30, height: 30, borderRadius: 8, fontSize: 13 };
+const subHead: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "10px 0 6px" };
+const dialogOverlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(8,4,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 60 };
+const dialogBox: React.CSSProperties = { width: "100%", maxWidth: 360, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" };
+const dangerBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "none", background: "var(--clay)", color: "var(--on-bright)", fontSize: 14, fontWeight: 700 };

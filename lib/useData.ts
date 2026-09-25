@@ -169,7 +169,11 @@ export function useData() {
 
   const deleteCompany = useCallback(
     async (id: string) => {
-      await supabase.from("companies").delete().eq("id", id);
+      // keep the entries, just detach them from the company
+      const { error: e1 } = await supabase.from("entries").update({ company_id: null }).eq("company_id", id);
+      if (e1) { setError(`Delete failed: ${e1.message}`); return; }
+      const { error: e2 } = await supabase.from("companies").delete().eq("id", id);
+      if (e2) { setError(`Delete failed: ${e2.message}`); return; }
       await load();
     },
     [supabase, load]
