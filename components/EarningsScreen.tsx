@@ -110,7 +110,7 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
           <div style={{ padding: "4px 18px 18px" }}>
             <Row label={L("grossEarnings")} value={eur(b.gross, locale)} />
             <Row label={`${L("piz")} (${settings.piz_pct}%)`} value={`− ${eur(b.piz, locale)}`} muted />
-            <Row label={`${L("pdo")} (${settings.pdo_pct}%)`} value={`− ${eur(b.pdo, locale)}`} muted />
+            {settings.pdo_pct > 0 && <Row label={`${L("pdo")} (${settings.pdo_pct}%)`} value={`− ${eur(b.pdo, locale)}`} muted />}
             <Row label={L("netBeforeTax")} value={eur(b.netBeforeTax, locale)} bold divider />
             {(b.akontacija > 0) && (
               <>

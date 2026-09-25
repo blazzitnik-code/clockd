@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useData } from "@/lib/useData";
 import { Locale, tr } from "@/lib/i18n";
-import { Entry, entryHours, eur, fmtHours, netBeforeTax } from "@/lib/earnings";
+import { Entry, entryHours, eur, fmtHours, isDone, netBeforeTax } from "@/lib/earnings";
 import { localISO } from "@/lib/dates";
 import Wordmark from "./Wordmark";
 import TodayScreen from "./TodayScreen";
@@ -14,7 +14,7 @@ import SettingsScreen from "./SettingsScreen";
 type Tab = "today" | "calendar" | "earnings" | "settings";
 
 export default function AppShell() {
-  const { entries, settings, companies, loading, error, saveEntry, deleteEntry, saveSettings, saveCompany, deleteCompany } = useData();
+  const { entries, settings, companies, loading, error, saveEntry, deleteEntry, saveSettings, saveCompany, deleteCompany, saveRate, deleteRate } = useData();
   const [tab, setTab] = useState<Tab>("today");
   const locale = settings.locale as Locale;
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
@@ -31,8 +31,7 @@ export default function AppShell() {
   async function handleSave(patch: Partial<Entry>) {
     const prev = patch.id ? entries.find((x) => x.id === patch.id) : undefined;
     const next = { ...prev, ...patch } as Entry;
-    const done = (e?: Entry) =>
-      !!e && e.status === "worked" && (!!e.end_time || e.gross_override != null || e.net_override != null);
+    const done = (e?: Entry) => !!e && isDone(e);
     const finished = done(next);
     const wasFinished = done(prev);
     await saveEntry(patch);
@@ -82,7 +81,7 @@ export default function AppShell() {
       {tab === "today" && <TodayScreen entries={entries} settings={settings} companies={companies} onSave={handleSave} onDelete={deleteEntry} />}
       {tab === "calendar" && <CalendarScreen entries={entries} settings={settings} companies={companies} onSave={handleSave} onDelete={deleteEntry} />}
       {tab === "earnings" && <EarningsScreen entries={entries} settings={settings} companies={companies} />}
-      {tab === "settings" && <SettingsScreen entries={entries} settings={settings} companies={companies} onSave={saveSettings} onSaveCompany={saveCompany} onDeleteCompany={deleteCompany} />}
+      {tab === "settings" && <SettingsScreen entries={entries} settings={settings} companies={companies} onSave={saveSettings} onSaveCompany={saveCompany} onDeleteCompany={deleteCompany} onSaveRate={saveRate} onDeleteRate={deleteRate} />}
 
       <nav style={navBar}>
         <TabBtn active={tab === "today"} onClick={() => setTab("today")} label={L("today")} icon={<ClockIcon />} />

@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Company, Entry, Settings, rawMinutes } from "@/lib/earnings";
+import { Company, CompanyRate, Entry, RATE_FROM_START, Settings, rawMinutes } from "@/lib/earnings";
 
 const DEFAULT_SETTINGS: Settings = {
   gross_rate: 8.98,
   rounding: "none",
   piz_pct: 13.95,
-  pdo_pct: 0.9,
+  pdo_pct: 0, // students don't pay the long-term-care (PDO) contribution
   akontacija_pct: 22.5,
   akontacija_threshold: 400,
   annual_allowance: 3886.35,
@@ -24,14 +24,20 @@ export function useData() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [{ data: e }, { data: s }, { data: c }] = await Promise.all([
+    const [{ data: e }, { data: s }, { data: c }, { data: r }] = await Promise.all([
       supabase.from("entries").select("*").order("work_date", { ascending: false }),
       supabase.from("settings").select("*").single(),
       supabase.from("companies").select("*").order("created_at"),
+      supabase.from("company_rates").select("*").order("valid_from"),
     ]);
     if (e) setEntries(e as Entry[]);
     if (s) setSettings(s as Settings);
-    if (c) setCompanies(c as Company[]);
+    if (c) {
+      const rates = (r ?? []) as CompanyRate[];
+      setCompanies(
+        (c as Company[]).map((co) => ({ ...co, rates: rates.filter((x) => x.company_id === co.id) }))
+      );
+    }
     setLoading(false);
   }, [supabase]);
 
@@ -98,15 +104,67 @@ export function useData() {
 
   const saveCompany = useCallback(
     async (company: Partial<Company>) => {
-      if (company.id) {
-        await supabase.from("companies").update(company).eq("id", company.id);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { rates, ...row } = company;
+      if (row.id) {
+        await supabase.from("companies").update(row).eq("id", row.id);
       } else {
         const user = await ensureUser();
-        await supabase.from("companies").insert({ ...company, user_id: user?.id });
+        const { data: created, error: e } = await supabase
+          .from("companies")
+          .insert({ ...row, user_id: user?.id })
+          .select()
+          .single();
+        if (e) { setError(`Company save failed: ${e.message}`); return; }
+        // first rate of a new company applies from the start
+        if (created && row.gross_rate != null) {
+          await supabase.from("company_rates").insert({
+            user_id: user?.id, company_id: created.id, gross_rate: row.gross_rate, valid_from: RATE_FROM_START,
+          });
+        }
       }
       await load();
     },
     [supabase, load, ensureUser]
+  );
+
+  // Keep companies.gross_rate equal to the most recent rate (used for labels
+  // and as the "is hourly" flag).
+  const syncCurrentRate = useCallback(
+    async (companyId: string) => {
+      const { data } = await supabase
+        .from("company_rates").select("gross_rate").eq("company_id", companyId)
+        .order("valid_from", { ascending: false }).limit(1);
+      const current = data && data.length ? data[0].gross_rate : null;
+      await supabase.from("companies").update({ gross_rate: current }).eq("id", companyId);
+    },
+    [supabase]
+  );
+
+  const saveRate = useCallback(
+    async (rate: Partial<CompanyRate> & { company_id: string }) => {
+      if (rate.id) {
+        const { error: e } = await supabase.from("company_rates")
+          .update({ gross_rate: rate.gross_rate, valid_from: rate.valid_from }).eq("id", rate.id);
+        if (e) { setError(`Rate save failed: ${e.message}`); return; }
+      } else {
+        const user = await ensureUser();
+        const { error: e } = await supabase.from("company_rates").insert({ ...rate, user_id: user?.id });
+        if (e) { setError(`Rate save failed: ${e.message}`); return; }
+      }
+      await syncCurrentRate(rate.company_id);
+      await load();
+    },
+    [supabase, load, ensureUser, syncCurrentRate]
+  );
+
+  const deleteRate = useCallback(
+    async (rate: CompanyRate) => {
+      await supabase.from("company_rates").delete().eq("id", rate.id);
+      await syncCurrentRate(rate.company_id);
+      await load();
+    },
+    [supabase, load, syncCurrentRate]
   );
 
   const deleteCompany = useCallback(
@@ -128,6 +186,8 @@ export function useData() {
     saveSettings,
     saveCompany,
     deleteCompany,
+    saveRate,
+    deleteRate,
     reload: load,
   };
 }

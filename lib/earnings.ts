@@ -4,8 +4,21 @@ export interface Company {
   id: string;
   user_id: string;
   name: string;
-  gross_rate: number | null; // null = not hourly-based (e.g. Wolt deliveries)
+  gross_rate: number | null; // current rate (mirrors latest company_rates row); null = not hourly
+  rates?: CompanyRate[];      // rate history, sorted by valid_from ascending
 }
+
+// A company's gross hourly rate valid from a given date onward.
+export interface CompanyRate {
+  id: string;
+  user_id: string;
+  company_id: string;
+  gross_rate: number;
+  valid_from: string; // YYYY-MM-DD
+}
+
+// Sentinel date for "valid from the start" (the first rate of a company).
+export const RATE_FROM_START = "2000-01-01";
 
 export interface Entry {
   id: string;
@@ -19,6 +32,7 @@ export interface Entry {
   company_id: string | null;
   gross_override: number | null;
   net_override: number | null;
+  duration_minutes: number | null; // quick entry: total time without start/end
 }
 
 export interface Settings {
@@ -56,10 +70,11 @@ export function applyRounding(
 }
 
 export function entryHours(entry: Entry, settings: Settings): number {
-  const mins = applyRounding(
-    rawMinutes(entry.start_time, entry.end_time),
-    settings.rounding
-  );
+  const raw =
+    entry.duration_minutes != null
+      ? entry.duration_minutes
+      : rawMinutes(entry.start_time, entry.end_time);
+  const mins = applyRounding(raw, settings.rounding);
   return mins / 60;
 }
 
@@ -76,7 +91,28 @@ export interface NetBreakdown {
   akontacijaApplies: boolean;
 }
 
-function resolveEntryGross(
+// A worked entry that counts toward money: finished timer, quick duration, or manual amount.
+export function isDone(e: Entry): boolean {
+  return (
+    e.status === "worked" &&
+    (!!e.end_time || e.duration_minutes != null || e.gross_override != null || e.net_override != null)
+  );
+}
+
+// Gross hourly rate that applied on `date`: the latest company rate whose
+// valid_from <= date. Falls back to the company's current rate, then to the
+// default rate in Settings.
+export function rateFor(company: Company | undefined, date: string, settings: Settings): number {
+  const rates = company?.rates;
+  if (rates && rates.length) {
+    let r = rates[0];
+    for (const x of rates) if (x.valid_from <= date) r = x;
+    return Number(r.gross_rate);
+  }
+  return company?.gross_rate ?? settings.gross_rate;
+}
+
+export function resolveEntryGross(
   entry: Entry,
   settings: Settings,
   companyMap: Map<string, Company>
@@ -87,10 +123,8 @@ function resolveEntryGross(
     const factor = 1 - settings.piz_pct / 100 - settings.pdo_pct / 100;
     return entry.net_override / factor;
   }
-  const rate =
-    (entry.company_id ? companyMap.get(entry.company_id)?.gross_rate : null) ??
-    settings.gross_rate;
-  return entryHours(entry, settings) * rate;
+  const company = entry.company_id ? companyMap.get(entry.company_id) : undefined;
+  return entryHours(entry, settings) * rateFor(company, entry.work_date, settings);
 }
 
 export function computeBreakdown(
@@ -99,11 +133,7 @@ export function computeBreakdown(
   companies: Company[] = []
 ): NetBreakdown {
   const companyMap = new Map(companies.map((c) => [c.id, c]));
-  const worked = entries.filter(
-    (e) =>
-      e.status === "worked" &&
-      (e.end_time || e.gross_override != null || e.net_override != null)
-  );
+  const worked = entries.filter(isDone);
 
   const hours = worked.reduce((sum, e) => sum + entryHours(e, settings), 0);
   const gross = worked.reduce(

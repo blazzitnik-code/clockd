@@ -1,16 +1,16 @@
 // Export helpers — CSV and a print-to-PDF window.
-import { Entry, Settings, entryHours, computeBreakdown, eur, fmtHours } from "./earnings";
+import { Company, Entry, Settings, entryHours, computeBreakdown, eur, fmtHours, isDone } from "./earnings";
 import { tr, Locale } from "./i18n";
 
-export function exportCsv(entries: Entry[], settings: Settings, locale: Locale) {
-  const worked = entries.filter((e) => e.status === "worked" && e.end_time);
+export function exportCsv(entries: Entry[], settings: Settings, locale: Locale, companies: Company[] = []) {
+  const worked = entries.filter(isDone);
   const rows = [
     ["Date", "Start", "End", "Overnight", "Label", "Hours", "Gross (EUR)", "Net before tax (EUR)"],
   ];
   for (const e of worked) {
     const h = entryHours(e, settings);
-    const gross = h * settings.gross_rate;
-    const b = computeBreakdown([e], settings);
+    const b = computeBreakdown([e], settings, companies);
+    const gross = b.gross;
     rows.push([
       e.work_date,
       (e.start_time || "").slice(0, 5),
@@ -28,9 +28,9 @@ export function exportCsv(entries: Entry[], settings: Settings, locale: Locale) 
 }
 
 // PDF via the browser's print dialog — no heavy dependency, works on mobile.
-export function exportPdf(entries: Entry[], settings: Settings, locale: Locale, title: string) {
-  const worked = entries.filter((e) => e.status === "worked" && e.end_time);
-  const b = computeBreakdown(worked, settings);
+export function exportPdf(entries: Entry[], settings: Settings, locale: Locale, title: string, companies: Company[] = []) {
+  const worked = entries.filter(isDone);
+  const b = computeBreakdown(worked, settings, companies);
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
 
   const rowsHtml = worked
@@ -38,10 +38,10 @@ export function exportPdf(entries: Entry[], settings: Settings, locale: Locale, 
       const h = entryHours(e, settings);
       return `<tr>
         <td>${e.work_date}</td>
-        <td>${(e.start_time || "").slice(0, 5)}–${(e.end_time || "").slice(0, 5)}${e.crosses_midnight ? " ⁺" : ""}</td>
+        <td>${e.start_time ? `${e.start_time.slice(0, 5)}–${(e.end_time || "").slice(0, 5)}${e.crosses_midnight ? " ⁺" : ""}` : ""}</td>
         <td>${e.label || ""}</td>
         <td style="text-align:right">${fmtHours(h)}</td>
-        <td style="text-align:right">${eur(h * settings.gross_rate, locale)}</td>
+        <td style="text-align:right">${eur(computeBreakdown([e], settings, companies).gross, locale)}</td>
       </tr>`;
     })
     .join("");
@@ -69,7 +69,7 @@ export function exportPdf(entries: Entry[], settings: Settings, locale: Locale, 
     <div class="break">
       <div class="r"><span>${L("grossEarnings")}</span><span>${eur(b.gross, locale)}</span></div>
       <div class="r"><span>${L("piz")} (${settings.piz_pct}%)</span><span>− ${eur(b.piz, locale)}</span></div>
-      <div class="r"><span>${L("pdo")} (${settings.pdo_pct}%)</span><span>− ${eur(b.pdo, locale)}</span></div>
+      ${settings.pdo_pct > 0 ? `<div class="r"><span>${L("pdo")} (${settings.pdo_pct}%)</span><span>− ${eur(b.pdo, locale)}</span></div>` : ""}
       <div class="r total"><span>${L("netBeforeTax")}</span><span>${eur(b.netBeforeTax, locale)}</span></div>
       ${b.akontacijaApplies ? `
       <div class="r"><span>${L("incomeTaxAdvance")} (${settings.akontacija_pct}% ${L("ofGross")})</span><span>− ${eur(b.akontacija, locale)}</span></div>

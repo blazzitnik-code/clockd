@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Company, Entry, Settings, netBeforeTax, eur, fmtHours, entryHours, rawMinutes } from "@/lib/earnings";
+import { Company, Entry, Settings, netBeforeTax, eur, fmtHours, entryHours, rawMinutes, isDone } from "@/lib/earnings";
 import { Locale, tr } from "@/lib/i18n";
 import { localISO, weekRange, monthRange } from "@/lib/dates";
 import EntryEditor from "./EntryEditor";
@@ -66,12 +66,12 @@ export default function TodayScreen({ entries, settings, companies, onSave, onDe
         <div style={{ ...hero, flex: 1, minWidth: 0 }}>
           <span style={heroLabel}>{L("netLabel")} · {L("thisWeek")}</span>
           <span className="figure" style={heroFigure}>{eur(weekNet, locale)}</span>
-          <span style={heroSub}>{fmtHours(weekEntries.filter(e=>e.status==="worked"&&e.end_time).reduce((s,e)=>s+entryHours(e,settings),0))}</span>
+          <span style={heroSub}>{fmtHours(weekEntries.filter(isDone).reduce((s,e)=>s+entryHours(e,settings),0))}</span>
         </div>
         <div style={{ ...hero, flex: 1, minWidth: 0 }}>
           <span style={heroLabel}>{L("netLabel")} · {L("thisMonth")}</span>
           <span className="figure" style={heroFigure}>{eur(monthNet, locale)}</span>
-          <span style={heroSub}>{fmtHours(monthEntries.filter(e=>e.status==="worked"&&e.end_time).reduce((s,e)=>s+entryHours(e,settings),0))}</span>
+          <span style={heroSub}>{fmtHours(monthEntries.filter(isDone).reduce((s,e)=>s+entryHours(e,settings),0))}</span>
         </div>
       </div>
 
@@ -139,6 +139,8 @@ export function EntryRow({ entry, settings, companies = [], locale, onClick }: {
         <span style={{ fontWeight: 600, fontSize: 15 }}>
           {entry.start_time
             ? `${entry.start_time.slice(0, 5)}${entry.end_time ? `–${entry.end_time.slice(0, 5)}` : "–…"}`
+            : entry.duration_minutes != null
+            ? `⏱ ${fmtHours(entry.duration_minutes / 60)}`
             : "●"}
           {entry.crosses_midnight ? <sup style={{ color: "var(--ink)" }}> +1</sup> : null}
         </span>

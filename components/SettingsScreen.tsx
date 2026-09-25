@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Company, Entry, Settings } from "@/lib/earnings";
+import { Company, CompanyRate, Entry, RATE_FROM_START, Settings, eur } from "@/lib/earnings";
+import { localISO } from "@/lib/dates";
 import { Locale, tr } from "@/lib/i18n";
 import { exportCsv, exportPdf } from "@/lib/export";
 import { createClient } from "@/lib/supabase/client";
@@ -13,9 +14,11 @@ interface Props {
   onSave: (s: Partial<Settings>) => void;
   onSaveCompany: (c: Partial<Company>) => void;
   onDeleteCompany: (id: string) => void;
+  onSaveRate: (r: Partial<CompanyRate> & { company_id: string }) => void;
+  onDeleteRate: (r: CompanyRate) => void;
 }
 
-export default function SettingsScreen({ entries, settings, companies, onSave, onSaveCompany, onDeleteCompany }: Props) {
+export default function SettingsScreen({ entries, settings, companies, onSave, onSaveCompany, onDeleteCompany, onSaveRate, onDeleteRate }: Props) {
   const locale = settings.locale as Locale;
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
   const supabase = createClient();
@@ -23,6 +26,7 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
   const [newName, setNewName] = useState("");
   const [newRate, setNewRate] = useState("");
   const [adding, setAdding] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   function handleAddCompany() {
     if (!newName.trim()) return;
@@ -46,15 +50,16 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: companies.length > 0 ? 10 : 0 }}>
           {companies.map((c) => (
-            <div key={c.id} style={companyRow}>
-              <div>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</span>
-                <span style={{ fontSize: 12, color: "var(--text-soft)", marginLeft: 8 }}>
-                  {c.gross_rate != null ? `${c.gross_rate} €/h` : locale === "sl" ? "ni urno" : "not hourly"}
-                </span>
-              </div>
-              <button onClick={() => onDeleteCompany(c.id)} style={deleteBtn}>✕</button>
-            </div>
+            <CompanyCard
+              key={c.id}
+              company={c}
+              locale={locale}
+              open={openId === c.id}
+              onToggle={() => setOpenId(openId === c.id ? null : c.id)}
+              onSaveRate={onSaveRate}
+              onDeleteRate={onDeleteRate}
+              onDelete={() => { onDeleteCompany(c.id); setOpenId(null); }}
+            />
           ))}
         </div>
 
@@ -135,8 +140,8 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
       {/* Export */}
       <Group title={L("export")}>
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => exportCsv(entries, settings, locale)} style={outlineBtn}>{L("exportCsv")}</button>
-          <button onClick={() => exportPdf(entries, settings, locale, `${L("appName")} — ${L("thisMonth")}`)} style={outlineBtn}>{L("exportPdf")}</button>
+          <button onClick={() => exportCsv(entries, settings, locale, companies)} style={outlineBtn}>{L("exportCsv")}</button>
+          <button onClick={() => exportPdf(entries, settings, locale, `${L("appName")} — ${L("thisMonth")}`, companies)} style={outlineBtn}>{L("exportPdf")}</button>
         </div>
       </Group>
 
@@ -146,6 +151,95 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
       >
         {L("signOut")}
       </button>
+    </div>
+  );
+}
+
+function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate, onDelete }: {
+  company: Company; locale: Locale; open: boolean; onToggle: () => void;
+  onSaveRate: Props["onSaveRate"]; onDeleteRate: Props["onDeleteRate"]; onDelete: () => void;
+}) {
+  const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
+  const rates = [...(company.rates ?? [])].sort((a, b) => (a.valid_from < b.valid_from ? 1 : -1)); // newest first
+  const [editing, setEditing] = useState<CompanyRate | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [rate, setRate] = useState("");
+  const [from, setFrom] = useState(localISO(new Date()));
+
+  const fmtDate = (d: string) =>
+    d === RATE_FROM_START
+      ? L("fromStart")
+      : `${L("fromDate")} ${new Date(d + "T00:00:00").toLocaleDateString(locale === "sl" ? "sl-SI" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+  const current = rates[0];
+  const summary = company.gross_rate != null
+    ? `${eur(company.gross_rate, locale)}/h${current && current.valid_from !== RATE_FROM_START ? ` · ${fmtDate(current.valid_from)}` : ""}`
+    : L("notHourly");
+
+  function startNew() {
+    setEditing(null); setRate(""); setFrom(localISO(new Date())); setFormOpen(true);
+  }
+  function startEdit(r: CompanyRate) {
+    setEditing(r); setRate(String(r.gross_rate)); setFrom(r.valid_from); setFormOpen(true);
+  }
+  function submit() {
+    const v = parseFloat(rate.replace(",", "."));
+    if (!v || !from) return;
+    const validFrom = rates.length === 0 && !editing ? RATE_FROM_START : from;
+    onSaveRate({ id: editing?.id, company_id: company.id, gross_rate: v, valid_from: validFrom });
+    setFormOpen(false); setEditing(null);
+  }
+
+  return (
+    <div style={{ ...companyRow, flexDirection: "column", alignItems: "stretch", padding: 0 }}>
+      <button onClick={onToggle} style={companyHead} aria-expanded={open}>
+        <span style={{ fontWeight: 600, fontSize: 14 }}>{company.name}</span>
+        <span style={{ fontSize: 12, color: "var(--text-soft)", marginLeft: 8, flex: 1, textAlign: "left" }}>{summary}</span>
+        <span style={{ color: "var(--text-faint)", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: "4px 14px 14px", borderTop: "1px solid var(--line)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "10px 0 6px" }}>
+            {L("rates")}
+          </div>
+          {rates.map((r, i) => (
+            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line)" }}>
+              <span className="figure" style={{ fontSize: 14, fontWeight: i === 0 ? 700 : 500, color: i === 0 ? "var(--text)" : "var(--text-soft)" }}>
+                {eur(Number(r.gross_rate), locale)}/h
+              </span>
+              <span style={{ fontSize: 13, color: "var(--text-soft)", flex: 1 }}>{fmtDate(r.valid_from)}</span>
+              <button onClick={() => startEdit(r)} style={iconBtn} aria-label={L("editRate")}>✎</button>
+              {rates.length > 1 && (
+                <button onClick={() => onDeleteRate(r)} style={{ ...iconBtn, color: "var(--clay)" }} aria-label={L("delete")}>✕</button>
+              )}
+            </div>
+          ))}
+
+          {formOpen ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{editing ? L("editRate") : L("newRate")}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input type="number" inputMode="decimal" step="0.01" min="0" placeholder="€/h" value={rate}
+                  onChange={(e) => setRate(e.target.value)} style={{ ...input, width: "40%" }} autoFocus />
+                {!(rates.length === 0 && !editing) && !(editing && editing.valid_from === RATE_FROM_START) && (
+                  <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ ...input, flex: 1 }} aria-label={L("validFrom")} />
+                )}
+              </div>
+              {!editing && rates.length > 0 && (
+                <p style={{ fontSize: 12, color: "var(--text-soft)", margin: 0, lineHeight: 1.5 }}>{L("rateNote")}</p>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={submit} style={primaryBtn}>{L("save")}</button>
+                <button onClick={() => { setFormOpen(false); setEditing(null); }} style={cancelBtn}>{L("cancel")}</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={startNew} style={{ ...outlineBtn, marginTop: 12, width: "100%" }}>+ {L("newRate")}</button>
+          )}
+
+          <button onClick={onDelete} style={{ ...deleteBtn, marginTop: 14, width: "100%", fontSize: 13, color: "var(--clay)" }}>{L("deleteCompany")}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -183,3 +277,5 @@ const cancelBtn: React.CSSProperties = { padding: "13px 18px", borderRadius: "va
 const signOutBtn: React.CSSProperties = { width: "100%", padding: 14, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--clay)", fontSize: 15, fontWeight: 600, marginTop: 10 };
 const companyRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: "var(--radius-sm)", background: "var(--surface-2)", border: "1px solid var(--line)" };
 const deleteBtn: React.CSSProperties = { border: "none", background: "transparent", color: "var(--text-faint)", fontSize: 14, padding: "4px 6px", borderRadius: 6 };
+const companyHead: React.CSSProperties = { display: "flex", alignItems: "center", gap: 4, width: "100%", padding: "11px 12px", border: "none", background: "transparent", color: "var(--text)" };
+const iconBtn: React.CSSProperties = { border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text-soft)", width: 30, height: 30, borderRadius: 8, fontSize: 13 };
