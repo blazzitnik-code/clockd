@@ -83,10 +83,10 @@ input, select { font-family: inherit; }
 
 .cell-worked { background: var(--grad); color: #fff; }
 .cell-planned {
-  background-color: var(--surface);
-  color: var(--ink-600);
-  font-weight: 700;
-  border: 2px dashed var(--ink);
-  background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255, 95, 176, 0.28) 5px, rgba(255, 95, 176, 0.28) 7px);
+  /* planned = a quiet hint; worked must stay the dominant signal */
+  background-color: transparent;
+  color: var(--text-soft);
+  font-weight: 500;
+  border: 1.5px dashed rgba(255, 141, 200, 0.45);
 }
 .cell-holiday-dot { background: var(--ink-600); }

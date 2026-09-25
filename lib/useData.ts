@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: Settings = {
   akontacija_threshold: 400,
   annual_allowance: 3886.35,
   locale: "en",
+  rate_type: "gross",
 };
 
 export function useData() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Company, CompanyRate, Entry, RATE_FROM_START, Settings, eur } from "@/lib/earnings";
+import { Company, CompanyRate, Entry, RATE_FROM_START, RateType, Settings, eur, toGross } from "@/lib/earnings";
 import { localISO } from "@/lib/dates";
 import { Locale, tr } from "@/lib/i18n";
 import { exportCsv, exportPdf } from "@/lib/export";
@@ -60,6 +60,8 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
               onDeleteRate={onDeleteRate}
               entryCount={entries.filter((e) => e.company_id === c.id).length}
               onRename={(name) => onSaveCompany({ id: c.id, name })}
+              onRateType={(rate_type) => onSaveCompany({ id: c.id, rate_type })}
+              settings={settings}
               onDelete={() => { onDeleteCompany(c.id); setOpenId(null); }}
             />
           ))}
@@ -106,7 +108,10 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
             onChange={(e) => onSave({ gross_rate: parseFloat(e.target.value) || 0 })}
             style={input}
           />
-          <span style={{ color: "var(--text-soft)", fontWeight: 600 }}>€ / h {L("gross").toLowerCase()}</span>
+          <span style={{ color: "var(--text-soft)", fontWeight: 600 }}>€ / h</span>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <RateTypeToggle value={settings.rate_type ?? "gross"} onChange={(rate_type) => onSave({ rate_type })} locale={locale} />
         </div>
       </Group>
 
@@ -157,10 +162,10 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
   );
 }
 
-function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate, onDelete, onRename, entryCount }: {
+function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate, onDelete, onRename, onRateType, settings, entryCount }: {
   company: Company; locale: Locale; open: boolean; onToggle: () => void;
   onSaveRate: Props["onSaveRate"]; onDeleteRate: Props["onDeleteRate"]; onDelete: () => void;
-  onRename: (name: string) => void; entryCount: number;
+  onRename: (name: string) => void; onRateType: (t: RateType) => void; settings: Settings; entryCount: number;
 }) {
   const [name, setName] = useState(company.name);
   const [confirm, setConfirm] = useState<null | { kind: "company" } | { kind: "rate"; rate: CompanyRate }>(null);
@@ -177,8 +182,10 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
       ? L("fromStart")
       : `${L("fromDate")} ${new Date(d + "T00:00:00").toLocaleDateString(locale === "sl" ? "sl-SI" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
   const current = rates[0];
+  const type: RateType = company.rate_type ?? "gross";
+  const typeLabel = (type === "net" ? L("net") : L("gross")).toLowerCase();
   const summary = company.gross_rate != null
-    ? `${eur(company.gross_rate, locale)}/h${current && current.valid_from !== RATE_FROM_START ? ` · ${fmtDate(current.valid_from)}` : ""}`
+    ? `${eur(company.gross_rate, locale)}/h ${typeLabel}${current && current.valid_from !== RATE_FROM_START ? ` · ${fmtDate(current.valid_from)}` : ""}`
     : L("notHourly");
 
   function startNew() {
@@ -214,9 +221,13 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
               <button onClick={() => onRename(name.trim())} style={{ ...primaryBtn, flex: "none", padding: "0 16px" }}>{L("save")}</button>
             )}
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "10px 0 6px" }}>
-            {L("rates")}
-          </div>
+          <div style={subHead}>{L("rates")}</div>
+          <RateTypeToggle value={type} onChange={onRateType} locale={locale} />
+          {type === "net" && company.gross_rate != null && (
+            <p style={{ fontSize: 12, color: "var(--text-soft)", margin: "6px 0 2px" }}>
+              = {eur(toGross(company.gross_rate, "net", settings), locale)}/h {L("gross").toLowerCase()}
+            </p>
+          )}
           {rates.map((r, i) => (
             <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line)" }}>
               <span className="figure" style={{ fontSize: 14, fontWeight: i === 0 ? 700 : 500, color: i === 0 ? "var(--text)" : "var(--text-soft)" }}>
@@ -234,7 +245,7 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{editing ? L("editRate") : L("newRate")}</div>
               <div style={{ display: "flex", gap: 8 }}>
-                <input type="number" inputMode="decimal" step="0.01" min="0" placeholder="€/h" value={rate}
+                <input type="number" inputMode="decimal" step="0.01" min="0" placeholder={`€/h ${typeLabel}`} value={rate}
                   onChange={(e) => setRate(e.target.value)} style={{ ...input, width: "40%" }} autoFocus />
                 {!(rates.length === 0 && !editing) && !(editing && editing.valid_from === RATE_FROM_START) && (
                   <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ ...input, flex: 1 }} aria-label={L("validFrom")} />
@@ -271,6 +282,20 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
           }}
         />
       )}
+    </div>
+  );
+}
+
+function RateTypeToggle({ value, onChange, locale }: { value: RateType; onChange: (t: RateType) => void; locale: Locale }) {
+  const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
+  return (
+    <div style={{ display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" }} role="radiogroup" aria-label={L("rateType")}>
+      {(["gross", "net"] as const).map((t) => (
+        <button key={t} role="radio" aria-checked={value === t} onClick={() => onChange(t)}
+          style={value === t ? segActive : segIdle}>
+          {t === "gross" ? L("gross") : L("net")}
+        </button>
+      ))}
     </div>
   );
 }

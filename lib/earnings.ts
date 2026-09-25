@@ -6,7 +6,10 @@ export interface Company {
   name: string;
   gross_rate: number | null; // current rate (mirrors latest company_rates row); null = not hourly
   rates?: CompanyRate[];      // rate history, sorted by valid_from ascending
+  rate_type?: RateType;       // whether the rate values are gross or net per hour
 }
+
+export type RateType = "gross" | "net";
 
 // A company's gross hourly rate valid from a given date onward.
 export interface CompanyRate {
@@ -44,6 +47,17 @@ export interface Settings {
   akontacija_threshold: number;
   annual_allowance: number;
   locale: "en" | "sl";
+  rate_type?: RateType; // applies to the default rate
+}
+
+// Share of gross that remains after social contributions (PIZ + PDO).
+export function netFactor(settings: Settings): number {
+  return 1 - settings.piz_pct / 100 - settings.pdo_pct / 100;
+}
+
+// Convert an hourly rate entered as gross or net into gross.
+export function toGross(value: number, type: RateType | undefined, settings: Settings): number {
+  return type === "net" ? value / netFactor(settings) : value;
 }
 
 // --- time helpers -------------------------------------------------
@@ -107,9 +121,10 @@ export function rateFor(company: Company | undefined, date: string, settings: Se
   if (rates && rates.length) {
     let r = rates[0];
     for (const x of rates) if (x.valid_from <= date) r = x;
-    return Number(r.gross_rate);
+    return toGross(Number(r.gross_rate), company?.rate_type, settings);
   }
-  return company?.gross_rate ?? settings.gross_rate;
+  if (company?.gross_rate != null) return toGross(company.gross_rate, company.rate_type, settings);
+  return toGross(settings.gross_rate, settings.rate_type, settings);
 }
 
 export function resolveEntryGross(
@@ -120,8 +135,7 @@ export function resolveEntryGross(
   if (entry.gross_override != null) return entry.gross_override;
   if (entry.net_override != null) {
     // back-calculate: net = gross × (1 − piz% − pdo%)
-    const factor = 1 - settings.piz_pct / 100 - settings.pdo_pct / 100;
-    return entry.net_override / factor;
+    return entry.net_override / netFactor(settings);
   }
   const company = entry.company_id ? companyMap.get(entry.company_id) : undefined;
   return entryHours(entry, settings) * rateFor(company, entry.work_date, settings);

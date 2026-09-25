@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Company, Entry, Settings, NetBreakdown, computeBreakdown, eur, fmtHours } from "@/lib/earnings";
 import { companyColor } from "@/lib/colors";
 import { Locale, tr } from "@/lib/i18n";
-import { weekRange, monthRange, addMonths, format } from "@/lib/dates";
+import { monthRange, addMonths, format } from "@/lib/dates";
 
 interface Props {
   entries: Entry[];
@@ -41,8 +41,6 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
   const monthLabel = (m: number) =>
     new Date(ref.getFullYear(), m, 1).toLocaleDateString(locale === "sl" ? "sl-SI" : "en-GB", { month: "short" });
 
-  const { start: ws, end: we } = weekRange(new Date());
-  const weekB = computeBreakdown(inRange(ws, we), settings, companies);
 
   // per-company breakdown for the month
   const perCompany = companies
@@ -64,15 +62,8 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
 
   return (
     <div style={{ padding: "20px 18px 100px" }}>
-      {/* This week (net only) */}
-      <div style={smallCard}>
-        <span style={cardLabel}>{L("netLabel")} · {L("thisWeek")}</span>
-        <span className="figure" style={{ fontSize: 26 }}>{eur(weekB.netBeforeTax, locale)}</span>
-        <span style={{ fontSize: 12, color: "var(--text-soft)" }}>{fmtHours(weekB.hours)}</span>
-      </div>
-
       {/* Month / Year toggle */}
-      <div style={{ ...segmented, marginTop: 22 }} role="tablist">
+      <div style={segmented} role="tablist">
         {(["month", "year"] as const).map((p) => (
           <button key={p} role="tab" aria-selected={period === p} onClick={() => setPeriod(p)} style={period === p ? segActive : segIdle}>
             {L(p)}
@@ -90,20 +81,23 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
       {/* Monthly breakdown card — mirrors the screenshot */}
       <div style={breakCard}>
         <div style={breakHead}>
-          <span style={{ fontSize: 13, opacity: 0.85 }}>{L("netLabel")} · {period === "month" ? L("month") : L("year")}</span>
-          <span className="figure" style={{ fontSize: 36, display: "block", margin: "4px 0 2px" }}>
+          <span className="figure" style={{ fontSize: 44, display: "block", lineHeight: 1.05 }}>
             {eur(b.netBeforeTax, locale)}
           </span>
-          <span style={{ fontSize: 12, opacity: 0.8 }}>{fmtHours(b.hours)}</span>
-          {b.akontacija > 0 && (
-            <span style={advancePill}>
-              −{eur(b.akontacija, locale)} {L("advanceWithheld")} → <b>{eur(b.netAfterTax, locale)}</b> {L("paidOut")}
+          <span style={{ display: "block", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", opacity: 0.85, marginTop: 4 }}>{L("netCaps")}</span>
+          <span style={{ display: "block", fontSize: 14, opacity: 0.8, marginTop: 2 }}>{fmtHours(b.hours)}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+            {b.akontacija > 0 && (
+              <span style={advancePill}>−{eur(b.akontacija, locale)} {L("taxAdvance")}</span>
+            )}
+            <span style={{ fontSize: 15 }}>
+              <b className="figure">{eur(b.netAfterTax, locale)}</b> {L("paidOut")}
             </span>
-          )}
+          </div>
         </div>
 
         <button onClick={() => setOpen(!open)} style={toggle}>
-          {open ? L("hideBreakdown") : L("showBreakdown")} {open ? "▲" : "▼"}
+          {open ? L("hideBreakdown") : L("viewBreakdown")} {open ? "↑" : "↓"}
         </button>
 
         {open && (
@@ -112,17 +106,14 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
             <Row label={`${L("piz")} (${settings.piz_pct}%)`} value={`− ${eur(b.piz, locale)}`} muted />
             {settings.pdo_pct > 0 && <Row label={`${L("pdo")} (${settings.pdo_pct}%)`} value={`− ${eur(b.pdo, locale)}`} muted />}
             <Row label={L("netBeforeTax")} value={eur(b.netBeforeTax, locale)} bold divider />
-            {(b.akontacija > 0) && (
-              <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "14px 0 4px" }}>
-                  {L("incomeTaxAdvance")}
-                </div>
-                <Row label={`${L("akontacija")} (${settings.akontacija_pct}% ${L("ofGross")})`} value={`− ${eur(b.akontacija, locale)}`} muted />
-                <Row label={L("netAfterTax")} value={eur(b.netAfterTax, locale)} bold divider />
-                <p style={{ fontSize: 12, color: "var(--text-soft)", lineHeight: 1.5, margin: "12px 0 0" }}>
-                  {L("advanceHint")}
-                </p>
-              </>
+            {b.akontacija > 0 && (
+              <Row label={`${L("incomeTaxAdvance")} (${settings.akontacija_pct}% ${L("ofGross")})`} value={`− ${eur(b.akontacija, locale)}`} muted />
+            )}
+            <Row label={L("paidOutTitle")} value={eur(b.netAfterTax, locale)} bold divider money />
+            {b.akontacija > 0 && (
+              <p style={{ fontSize: 12, color: "var(--text-soft)", lineHeight: 1.5, margin: "12px 0 0" }}>
+                {L("advanceHint")}
+              </p>
             )}
           </div>
         )}
@@ -132,14 +123,21 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
       {period === "year" && (
         <div style={{ marginTop: 22 }}>
           <span style={cardLabel}>{L("byMonth")}</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+          {/* mini bar chart */}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 90, marginTop: 12 }} aria-hidden>
             {months.map((mb, m) => (
-              <div key={m} style={{ display: "grid", gridTemplateColumns: "44px 1fr 86px", alignItems: "center", gap: 10, fontSize: 13 }}>
-                <span style={{ color: "var(--text-soft)", textTransform: "capitalize" }}>{monthLabel(m)}</span>
-                <div style={{ height: 10, borderRadius: 5, background: "var(--surface-2)", overflow: "hidden" }}>
-                  <div style={{ width: `${(takeHome(mb) / maxMonth) * 100}%`, height: "100%", background: "var(--grad)", borderRadius: 5 }} />
-                </div>
-                <span className="figure" style={{ textAlign: "right", fontWeight: 600, color: mb.gross ? "var(--text)" : "var(--text-faint)" }}>
+              <div key={m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
+                <div style={{ width: "100%", height: `${Math.max(mb.gross ? 4 : 2, (takeHome(mb) / maxMonth) * 72)}px`, borderRadius: 4, background: mb.gross ? "var(--grad)" : "var(--surface-2)" }} />
+                <span style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase" }}>{monthLabel(m).slice(0, 1)}</span>
+              </div>
+            ))}
+          </div>
+          {/* list */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 20, marginTop: 14 }}>
+            {months.map((mb, m) => (
+              <div key={m} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: 14 }}>
+                <span style={{ color: "var(--text-soft)", textTransform: "capitalize" }}>{monthLabel(m).replace(".", "")}</span>
+                <span className="figure" style={{ fontWeight: 600, color: mb.gross ? "var(--text)" : "var(--text-faint)" }}>
                   {mb.gross ? eur(takeHome(mb), locale) : "—"}
                 </span>
               </div>
@@ -208,7 +206,7 @@ export default function EarningsScreen({ entries, settings, companies }: Props) 
   );
 }
 
-function Row({ label, value, muted, bold, divider }: { label: string; value: string; muted?: boolean; bold?: boolean; divider?: boolean }) {
+function Row({ label, value, muted, bold, divider, money }: { label: string; value: string; muted?: boolean; bold?: boolean; divider?: boolean; money?: boolean }) {
   return (
     <div style={{
       display: "flex", justifyContent: "space-between", padding: "9px 0", fontSize: 14,
@@ -216,18 +214,17 @@ function Row({ label, value, muted, bold, divider }: { label: string; value: str
       marginTop: divider ? 4 : 0,
     }}>
       <span style={{ color: muted ? "var(--text-soft)" : "var(--text)", fontWeight: bold ? 700 : 400 }}>{label}</span>
-      <span className="figure" style={{ fontWeight: bold ? 700 : 500, color: bold ? "var(--ink)" : "var(--text)", fontSize: 14 }}>{value}</span>
+      <span className="figure" style={{ whiteSpace: "nowrap", marginLeft: 12, fontWeight: bold ? 700 : 500, color: money ? "var(--money)" : bold ? "var(--ink)" : "var(--text)", fontSize: 14 }}>{value}</span>
     </div>
   );
 }
 
-const smallCard: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 2 };
 const cardLabel: React.CSSProperties = { fontSize: 12, color: "var(--text-soft)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" };
 const breakCard: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", overflow: "hidden" };
 const breakHead: React.CSSProperties = { background: "var(--grad)", color: "#fff", padding: "20px 18px 16px" };
 const toggle: React.CSSProperties = { width: "100%", padding: "12px", border: "none", borderBottom: "1px solid var(--line)", background: "var(--surface-2)", color: "var(--ink)", fontSize: 13, fontWeight: 600 };
 const navBtn: React.CSSProperties = { border: "1px solid var(--line)", background: "var(--surface)", width: 36, height: 36, borderRadius: 10, fontSize: 18, color: "var(--text)" };
-const advancePill: React.CSSProperties = { display: "inline-block", marginTop: 12, padding: "6px 10px", borderRadius: 8, background: "rgba(18,10,36,0.35)", fontSize: 12, lineHeight: 1.4 };
+const advancePill: React.CSSProperties = { display: "inline-block", padding: "5px 10px", borderRadius: 999, background: "rgba(12,10,29,0.35)", fontSize: 13, fontWeight: 600 };
 const segmented: React.CSSProperties = { display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" };
 const segActive: React.CSSProperties = { flex: 1, padding: "9px", borderRadius: 7, border: "none", background: "var(--grad)", color: "#fff", fontWeight: 600, fontSize: 14 };
 const segIdle: React.CSSProperties = { flex: 1, padding: "9px", borderRadius: 7, border: "none", background: "transparent", color: "var(--text-soft)", fontWeight: 600, fontSize: 14 };
