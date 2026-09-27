@@ -74,11 +74,16 @@ export default function QuickAdd({ settings, companies, defaultDate, fallbackCom
           <button onClick={onClose} style={closeBtn} aria-label={L("cancel")}>✕</button>
         </div>
 
-        {/* date chip — tap to change */}
-        <label style={dateChip}>
-          📅 {dateLabel} ▾
-          <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} style={hiddenDate} aria-label={L("date")} />
-        </label>
+        {/* date chip — tap to change; single company shown as a quiet label */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          <label style={dateChip}>
+            📅 {dateLabel} ▾
+            <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} style={hiddenDate} aria-label={L("date")} />
+          </label>
+          {hourly.length === 1 && (
+            <span style={{ ...dateChip, cursor: "default", color: "var(--text-soft)", background: "transparent" }}>{hourly[0].name}</span>
+          )}
+        </div>
 
         {/* duration */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "18px 0 6px" }}>
@@ -136,7 +141,7 @@ const closeBtn: React.CSSProperties = {
   borderRadius: 8, color: "var(--text-soft)", fontSize: 14,
 };
 const dateChip: React.CSSProperties = {
-  position: "relative", display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12,
+  position: "relative", display: "inline-flex", alignItems: "center", gap: 6,
   padding: "6px 12px", borderRadius: 999, background: "var(--surface-2)", border: "1px solid var(--line)",
   color: "var(--text)", fontSize: 14, fontWeight: 600, cursor: "pointer",
 };

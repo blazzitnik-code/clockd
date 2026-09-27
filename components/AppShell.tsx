@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useData } from "@/lib/useData";
 import { Locale, tr } from "@/lib/i18n";
 import { Entry, entryHours, eur, fmtHours, isDone, netBeforeTax } from "@/lib/earnings";
@@ -18,11 +18,11 @@ export default function AppShell() {
   const [tab, setTab] = useState<Tab>("today");
   const locale = settings.locale as Locale;
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
-  const [toast, setToast] = useState<{ hours: string; money: string } | null>(null);
+  const [toast, setToast] = useState<{ key: number; hours: string; from: number; to: number; suffix: string } | null>(null);
 
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => setToast(null), 4000);
+    const id = setTimeout(() => setToast(null), 4500);
     return () => clearTimeout(id);
   }, [toast]);
 
@@ -41,6 +41,7 @@ export default function AppShell() {
       (x) => x.work_date === next.work_date && x.id !== next.id && done(x)
     );
     const dayNet = netBeforeTax([...sameDay, next], settings, companies);
+    const dayNetBefore = netBeforeTax(sameDay, settings, companies);
     const entryNet = netBeforeTax([next], settings, companies);
     const isManual = next.gross_override != null || next.net_override != null;
     const isToday = next.work_date === localISO(new Date());
@@ -48,8 +49,11 @@ export default function AppShell() {
       locale === "sl" ? "sl-SI" : "en-GB", { day: "numeric", month: "short" }
     );
     setToast({
-      hours: `${isManual ? eur(entryNet, locale) : fmtHours(entryHours(next, settings))} ${L("logged")} 🎉`,
-      money: `${eur(dayNet, locale)} ${isToday ? L("earnedToday") : `${L("earnedOn")} ${dayLabel}`}`,
+      key: Date.now(),
+      hours: `${isManual ? eur(entryNet, locale) : fmtHours(entryHours(next, settings))} ${L("added")} 🎉`,
+      from: dayNetBefore,
+      to: dayNet,
+      suffix: isToday ? L("earnedToday") : `${L("earnedOn")} ${dayLabel}`,
     });
   }
 
@@ -93,12 +97,38 @@ export default function AppShell() {
       {toast && (
         <div role="status" aria-live="polite" style={toastBox} onClick={() => setToast(null)}>
           <span style={{ fontSize: 17, fontWeight: 700 }}>{toast.hours}</span>
-          <span className="figure" style={{ fontSize: 15, fontWeight: 600, color: "var(--money)" }}>{toast.money}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--money)" }}>
+            <CountUp key={toast.key} from={toast.from} to={toast.to} locale={locale} /> {toast.suffix}
+          </span>
         </div>
       )}
     </div>
     </>
   );
+}
+
+// Money ticks up from the day's previous total to the new one — time → money.
+function CountUp({ from, to, locale }: { from: number; to: number; locale: Locale }) {
+  const [v, setV] = useState(from);
+  const raf = useRef(0);
+  const [still] = useState(
+    () => from === to || (typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)
+  );
+  useEffect(() => {
+    if (still) return;
+    const start = performance.now();
+    const dur = 1100;
+    const delay = 250;
+    const tick = (t: number) => {
+      const p = Math.min(1, Math.max(0, (t - start - delay) / dur));
+      const eased = 1 - Math.pow(1 - p, 3);
+      setV(from + (to - from) * eased);
+      if (p < 1) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [from, to, still]);
+  return <span className="figure" style={{ display: "inline-block", fontSize: 20, fontWeight: 700 }}>{eur(still ? to : v, locale)}</span>;
 }
 
 function TabBtn({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: React.ReactNode }) {

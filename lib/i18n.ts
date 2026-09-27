@@ -63,6 +63,7 @@ export const t = {
     en: "Monthly gross over the threshold, so the payer withholds a tax advance. It's usually refunded at annual assessment.",
     sl: "Mesečni bruto nad pragom, zato izplačevalec odtegne akontacijo. Ob letni odmeri se praviloma vrne.",
   },
+  added: { en: "added", sl: "dodano" },
   logged: { en: "logged", sl: "zabeleženo" },
   earnedToday: { en: "earned today", sl: "zasluženo danes" },
   earnedOn: { en: "earned on", sl: "zasluženo" },
@@ -131,6 +132,7 @@ export const t = {
     sl: "Nova postavka velja za vnose od izbranega datuma naprej. Prejšnji vnosi ostanejo po stari postavki.",
   },
   deleteCompany: { en: "Delete company", sl: "Izbriši podjetje" },
+  rateHistory: { en: "Rate history", sl: "Zgodovina postavk" },
   deleteCompanyQ: { en: "Delete this company?", sl: "Izbrišem to podjetje?" },
   deleteCompanyBody: {
     en: "Its rate history is deleted. Logged entries stay, but without a company, so they're calculated at the default rate from Settings.",

@@ -37,6 +37,25 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
     setAdding(false);
   }
 
+  const openCompany = companies.find((c) => c.id === openId);
+  if (openCompany) {
+    return (
+      <CompanyDetail
+        key={openCompany.id}
+        company={openCompany}
+        locale={locale}
+        settings={settings}
+        entryCount={entries.filter((e) => e.company_id === openCompany.id).length}
+        onBack={() => setOpenId(null)}
+        onSaveRate={onSaveRate}
+        onDeleteRate={onDeleteRate}
+        onRename={(name) => onSaveCompany({ id: openCompany.id, name })}
+        onRateType={(rate_type) => onSaveCompany({ id: openCompany.id, rate_type })}
+        onDelete={() => { onDeleteCompany(openCompany.id); setOpenId(null); }}
+      />
+    );
+  }
+
   return (
     <div style={{ padding: "20px 18px 100px" }}>
       <h2 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 22px" }}>{L("settings")}</h2>
@@ -50,20 +69,13 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: companies.length > 0 ? 10 : 0 }}>
           {companies.map((c) => (
-            <CompanyCard
-              key={c.id}
-              company={c}
-              locale={locale}
-              open={openId === c.id}
-              onToggle={() => setOpenId(openId === c.id ? null : c.id)}
-              onSaveRate={onSaveRate}
-              onDeleteRate={onDeleteRate}
-              entryCount={entries.filter((e) => e.company_id === c.id).length}
-              onRename={(name) => onSaveCompany({ id: c.id, name })}
-              onRateType={(rate_type) => onSaveCompany({ id: c.id, rate_type })}
-              settings={settings}
-              onDelete={() => { onDeleteCompany(c.id); setOpenId(null); }}
-            />
+            <button key={c.id} onClick={() => setOpenId(c.id)} style={companyListRow}>
+              <span style={{ fontWeight: 600, fontSize: 15 }}>{c.name}</span>
+              <span style={{ fontSize: 13, color: "var(--text-soft)", flex: 1, textAlign: "left", marginLeft: 10 }}>
+                {companySummary(c, locale)}
+              </span>
+              <span style={{ color: "var(--text-faint)", fontSize: 18 }}>›</span>
+            </button>
           ))}
         </div>
 
@@ -162,38 +174,41 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
   );
 }
 
-function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate, onDelete, onRename, onRateType, settings, entryCount }: {
-  company: Company; locale: Locale; open: boolean; onToggle: () => void;
-  onSaveRate: Props["onSaveRate"]; onDeleteRate: Props["onDeleteRate"]; onDelete: () => void;
-  onRename: (name: string) => void; onRateType: (t: RateType) => void; settings: Settings; entryCount: number;
+function fmtRateDate(d: string, locale: Locale): string {
+  const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
+  return d === RATE_FROM_START
+    ? L("fromStart")
+    : new Date(d + "T00:00:00").toLocaleDateString(locale === "sl" ? "sl-SI" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function companySummary(c: Company, locale: Locale): string {
+  const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
+  if (c.gross_rate == null) return L("notHourly");
+  const type = (c.rate_type === "net" ? L("net") : L("gross")).toLowerCase();
+  return `${eur(c.gross_rate, locale)}/h ${type}`;
+}
+
+function CompanyDetail({ company, locale, settings, entryCount, onBack, onSaveRate, onDeleteRate, onRename, onRateType, onDelete }: {
+  company: Company; locale: Locale; settings: Settings; entryCount: number; onBack: () => void;
+  onSaveRate: Props["onSaveRate"]; onDeleteRate: Props["onDeleteRate"];
+  onRename: (name: string) => void; onRateType: (t: RateType) => void; onDelete: () => void;
 }) {
-  const [name, setName] = useState(company.name);
-  const [confirm, setConfirm] = useState<null | { kind: "company" } | { kind: "rate"; rate: CompanyRate }>(null);
-  const nameChanged = name.trim() !== "" && name.trim() !== company.name;
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
   const rates = [...(company.rates ?? [])].sort((a, b) => (a.valid_from < b.valid_from ? 1 : -1)); // newest first
+  const current = rates[0];
+  const type: RateType = company.rate_type ?? "gross";
+  const typeLabel = (type === "net" ? L("net") : L("gross")).toLowerCase();
+
+  const [name, setName] = useState(company.name);
+  const nameChanged = name.trim() !== "" && name.trim() !== company.name;
   const [editing, setEditing] = useState<CompanyRate | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [rate, setRate] = useState("");
   const [from, setFrom] = useState(localISO(new Date()));
+  const [confirm, setConfirm] = useState<null | { kind: "company" } | { kind: "rate"; rate: CompanyRate }>(null);
 
-  const fmtDate = (d: string) =>
-    d === RATE_FROM_START
-      ? L("fromStart")
-      : `${L("fromDate")} ${new Date(d + "T00:00:00").toLocaleDateString(locale === "sl" ? "sl-SI" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
-  const current = rates[0];
-  const type: RateType = company.rate_type ?? "gross";
-  const typeLabel = (type === "net" ? L("net") : L("gross")).toLowerCase();
-  const summary = company.gross_rate != null
-    ? `${eur(company.gross_rate, locale)}/h ${typeLabel}${current && current.valid_from !== RATE_FROM_START ? ` · ${fmtDate(current.valid_from)}` : ""}`
-    : L("notHourly");
-
-  function startNew() {
-    setEditing(null); setRate(""); setFrom(localISO(new Date())); setFormOpen(true);
-  }
-  function startEdit(r: CompanyRate) {
-    setEditing(r); setRate(String(r.gross_rate)); setFrom(r.valid_from); setFormOpen(true);
-  }
+  function startNew() { setEditing(null); setRate(""); setFrom(localISO(new Date())); setFormOpen(true); }
+  function startEdit(r: CompanyRate) { setEditing(r); setRate(String(r.gross_rate)); setFrom(r.valid_from); setFormOpen(true); }
   function submit() {
     const v = parseFloat(rate.replace(",", "."));
     if (!v || !from) return;
@@ -201,76 +216,99 @@ function CompanyCard({ company, locale, open, onToggle, onSaveRate, onDeleteRate
     onSaveRate({ id: editing?.id, company_id: company.id, gross_rate: v, valid_from: validFrom });
     setFormOpen(false); setEditing(null);
   }
+  const showDate = !(rates.length === 0 && !editing) && !(editing && editing.valid_from === RATE_FROM_START);
 
   return (
-    <div style={{ ...companyRow, flexDirection: "column", alignItems: "stretch", padding: 0 }}>
-      <button onClick={onToggle} style={companyHead} aria-expanded={open}>
-        <span style={{ fontWeight: 600, fontSize: 14 }}>{company.name}</span>
-        <span style={{ fontSize: 12, color: "var(--text-soft)", marginLeft: 8, flex: 1, textAlign: "left" }}>{summary}</span>
-        <span style={{ color: "var(--text-faint)", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
-      </button>
+    <div style={{ padding: "12px 18px 100px" }}>
+      <button onClick={onBack} style={backBtn}>‹ {L("settings")}</button>
 
-      {open && (
-        <div style={{ padding: "4px 14px 14px", borderTop: "1px solid var(--line)" }}>
-          <div style={subHead}>{L("companyNameLabel")}</div>
+      {/* name as the page title, editable in place */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "6px 0 24px" }}>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && nameChanged && onRename(name.trim())}
+          style={titleInput} aria-label={L("companyNameLabel")} />
+        {nameChanged && (
+          <button onClick={() => onRename(name.trim())} style={{ ...primaryBtn, flex: "none", padding: "10px 16px" }}>{L("save")}</button>
+        )}
+      </div>
+
+      <Group title={L("rates")}>
+        <div style={panel}>
+          {current ? (
+            <>
+              <span className="figure" style={{ fontSize: 38, lineHeight: 1 }}>{eur(Number(current.gross_rate), locale)}</span>
+              <span style={{ fontSize: 14, color: "var(--text-soft)", marginTop: 4 }}>/h {typeLabel}</span>
+              {type === "net" && (
+                <span style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 2 }}>
+                  = {eur(toGross(Number(current.gross_rate), "net", settings), locale)}/h {L("gross").toLowerCase()}
+                </span>
+              )}
+            </>
+          ) : (
+            <span style={{ fontSize: 15, color: "var(--text-soft)" }}>{L("notHourly")}</span>
+          )}
+        </div>
+      </Group>
+
+      <Group title={L("rateType")}>
+        <RateTypeToggle value={type} onChange={onRateType} locale={locale} />
+      </Group>
+
+      {current && (
+        <Group title={L("validFrom")}>
+          <div style={{ ...panel, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>{fmtRateDate(current.valid_from, locale)}</span>
+            <button onClick={() => startEdit(current)} style={iconBtn} aria-label={L("editRate")}>✎</button>
+          </div>
+        </Group>
+      )}
+
+      {/* new / edit rate */}
+      {formOpen ? (
+        <div style={{ ...panel, gap: 10, marginBottom: 26 }}>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{editing ? L("editRate") : L("newRate")}</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && nameChanged && onRename(name.trim())}
-              style={{ ...input, flex: 1, width: "auto", minWidth: 0 }} aria-label={L("companyNameLabel")} />
-            {nameChanged && (
-              <button onClick={() => onRename(name.trim())} style={{ ...primaryBtn, flex: "none", padding: "0 16px" }}>{L("save")}</button>
+            <input type="number" inputMode="decimal" step="0.01" min="0" placeholder={`€/h ${typeLabel}`} value={rate}
+              onChange={(e) => setRate(e.target.value)} style={{ ...input, width: "40%" }} autoFocus />
+            {showDate && (
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ ...input, flex: 1, width: "auto" }} aria-label={L("validFrom")} />
             )}
           </div>
-          <div style={subHead}>{L("rates")}</div>
-          <RateTypeToggle value={type} onChange={onRateType} locale={locale} />
-          {type === "net" && company.gross_rate != null && (
-            <p style={{ fontSize: 12, color: "var(--text-soft)", margin: "6px 0 2px" }}>
-              = {eur(toGross(company.gross_rate, "net", settings), locale)}/h {L("gross").toLowerCase()}
-            </p>
+          {!editing && rates.length > 0 && (
+            <p style={{ fontSize: 12, color: "var(--text-soft)", margin: 0, lineHeight: 1.5 }}>{L("rateNote")}</p>
           )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={submit} style={primaryBtn}>{L("save")}</button>
+            <button onClick={() => { setFormOpen(false); setEditing(null); }} style={cancelBtn}>{L("cancel")}</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={startNew} style={{ ...outlineBtn, width: "100%", marginBottom: 26 }}>+ {L("newRate")}</button>
+      )}
+
+      {rates.length > 1 && (
+        <Group title={L("rateHistory")}>
           {rates.map((r, i) => (
-            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: "1px solid var(--line)" }}>
-              <span className="figure" style={{ fontSize: 14, fontWeight: i === 0 ? 700 : 500, color: i === 0 ? "var(--text)" : "var(--text-soft)" }}>
+            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+              <span className="figure" style={{ fontSize: 15, fontWeight: i === 0 ? 700 : 500, color: i === 0 ? "var(--text)" : "var(--text-soft)" }}>
                 {eur(Number(r.gross_rate), locale)}/h
               </span>
-              <span style={{ fontSize: 13, color: "var(--text-soft)", flex: 1 }}>{fmtDate(r.valid_from)}</span>
+              <span style={{ fontSize: 13, color: "var(--text-soft)", flex: 1 }}>
+                {r.valid_from === RATE_FROM_START ? L("fromStart") : `${L("fromDate")} ${fmtRateDate(r.valid_from, locale)}`}
+              </span>
               <button onClick={() => startEdit(r)} style={iconBtn} aria-label={L("editRate")}>✎</button>
-              {rates.length > 1 && (
-                <button onClick={() => setConfirm({ kind: "rate", rate: r })} style={{ ...iconBtn, color: "var(--danger)" }} aria-label={L("delete")}>✕</button>
-              )}
+              <button onClick={() => setConfirm({ kind: "rate", rate: r })} style={{ ...iconBtn, color: "var(--danger)" }} aria-label={L("delete")}>✕</button>
             </div>
           ))}
-
-          {formOpen ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{editing ? L("editRate") : L("newRate")}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="number" inputMode="decimal" step="0.01" min="0" placeholder={`€/h ${typeLabel}`} value={rate}
-                  onChange={(e) => setRate(e.target.value)} style={{ ...input, width: "40%" }} autoFocus />
-                {!(rates.length === 0 && !editing) && !(editing && editing.valid_from === RATE_FROM_START) && (
-                  <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ ...input, flex: 1 }} aria-label={L("validFrom")} />
-                )}
-              </div>
-              {!editing && rates.length > 0 && (
-                <p style={{ fontSize: 12, color: "var(--text-soft)", margin: 0, lineHeight: 1.5 }}>{L("rateNote")}</p>
-              )}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={submit} style={primaryBtn}>{L("save")}</button>
-                <button onClick={() => { setFormOpen(false); setEditing(null); }} style={cancelBtn}>{L("cancel")}</button>
-              </div>
-            </div>
-          ) : (
-            <button onClick={startNew} style={{ ...outlineBtn, marginTop: 12, width: "100%" }}>+ {L("newRate")}</button>
-          )}
-
-          <button onClick={() => setConfirm({ kind: "company" })} style={{ ...deleteBtn, marginTop: 14, width: "100%", fontSize: 13, color: "var(--danger)" }}>{L("deleteCompany")}</button>
-        </div>
+        </Group>
       )}
+
+      <button onClick={() => setConfirm({ kind: "company" })} style={deleteCompanyBtn}>{L("deleteCompany")}</button>
 
       {confirm && (
         <ConfirmDialog
-          title={confirm.kind === "company" ? `${L("deleteCompanyQ")}` : L("deleteRateQ")}
-          subject={confirm.kind === "company" ? company.name : `${eur(Number(confirm.rate.gross_rate), locale)}/h · ${fmtDate(confirm.rate.valid_from)}`}
+          title={confirm.kind === "company" ? L("deleteCompanyQ") : L("deleteRateQ")}
+          subject={confirm.kind === "company" ? company.name : `${eur(Number(confirm.rate.gross_rate), locale)}/h · ${fmtRateDate(confirm.rate.valid_from, locale)}`}
           body={confirm.kind === "company" ? L("deleteCompanyBody") : L("deleteRateBody")}
           meta={confirm.kind === "company" && entryCount > 0 ? `${L("entriesAffected")}: ${entryCount}` : undefined}
           confirmLabel={L("yesDelete")}
@@ -351,11 +389,12 @@ const outlineBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "v
 const primaryBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "none", background: "var(--grad)", color: "#fff", fontSize: 14, fontWeight: 600 };
 const cancelBtn: React.CSSProperties = { padding: "13px 18px", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text-soft)", fontSize: 14, fontWeight: 600 };
 const signOutBtn: React.CSSProperties = { width: "100%", padding: 14, borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text-soft)", fontSize: 15, fontWeight: 600, marginTop: 10 };
-const companyRow: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: "var(--radius-sm)", background: "var(--surface-2)", border: "1px solid var(--line)" };
-const deleteBtn: React.CSSProperties = { border: "none", background: "transparent", color: "var(--text-faint)", fontSize: 14, padding: "4px 6px", borderRadius: 6 };
-const companyHead: React.CSSProperties = { display: "flex", alignItems: "center", gap: 4, width: "100%", padding: "11px 12px", border: "none", background: "transparent", color: "var(--text)" };
 const iconBtn: React.CSSProperties = { border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text-soft)", width: 30, height: 30, borderRadius: 8, fontSize: 13 };
-const subHead: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", margin: "10px 0 6px" };
 const dialogOverlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(8,4,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 60 };
 const dialogBox: React.CSSProperties = { width: "100%", maxWidth: 360, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" };
 const dangerBtn: React.CSSProperties = { flex: 1, padding: 13, borderRadius: "var(--radius-sm)", border: "none", background: "var(--danger)", color: "var(--on-bright)", fontSize: 14, fontWeight: 700 };
+const companyListRow: React.CSSProperties = { display: "flex", alignItems: "center", width: "100%", padding: "14px 14px", borderRadius: "var(--radius-sm)", background: "var(--surface-2)", border: "1px solid var(--line)", color: "var(--text)" };
+const backBtn: React.CSSProperties = { border: "none", background: "transparent", color: "var(--ink)", fontSize: 15, fontWeight: 600, padding: "8px 0" };
+const titleInput: React.CSSProperties = { flex: 1, minWidth: 0, fontSize: 26, fontWeight: 700, color: "var(--text)", background: "transparent", border: "none", borderBottom: "1px dashed var(--line)", padding: "4px 0", borderRadius: 0 };
+const panel: React.CSSProperties = { display: "flex", flexDirection: "column", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "16px 18px" };
+const deleteCompanyBtn: React.CSSProperties = { width: "100%", marginTop: 8, padding: 13, borderRadius: "var(--radius-sm)", border: "1px solid var(--danger-100)", background: "transparent", color: "var(--danger)", fontSize: 14, fontWeight: 600 };

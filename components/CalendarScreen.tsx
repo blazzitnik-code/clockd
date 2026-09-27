@@ -6,6 +6,7 @@ import { companyColor } from "@/lib/colors";
 import { Locale, tr, siHolidays, t } from "@/lib/i18n";
 import { localISO, monthGrid, addMonths, isSameMonth, isSameDay, format } from "@/lib/dates";
 import EntryEditor from "./EntryEditor";
+import QuickAdd from "./QuickAdd";
 import { EntryRow } from "./TodayScreen";
 
 interface Props {
@@ -22,6 +23,7 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
   const [ref, setRef] = useState(new Date());
   const [selected, setSelected] = useState<string>(localISO(new Date()));
   const [editing, setEditing] = useState<Partial<Entry> | null>(null);
+  const [quick, setQuick] = useState(false);
 
   const grid = monthGrid(ref);
   const holidays = siHolidays(ref.getFullYear());
@@ -130,7 +132,7 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
           {format(new Date(selected + "T00:00:00"), "EEEE, d LLL")}
         </h3>
-        <button onClick={() => setEditing({ work_date: selected })} style={addDayBtn}>+ {L("addEntry")}</button>
+        <button onClick={() => setQuick(true)} style={addDayBtn}>+ {L("addHours")}</button>
       </div>
       {holidays[selected] && (
         <p style={{ fontSize: 13, color: "var(--ink-600)", margin: "8px 0 0" }}>● {holidays[selected][locale]}</p>
@@ -151,6 +153,19 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
           ))
         )}
       </div>
+
+      {quick && (
+        <QuickAdd
+          settings={settings}
+          companies={companies}
+          defaultDate={selected}
+          fallbackCompanyId={entries.find((e) => e.company_id)?.company_id ?? null}
+          locale={locale}
+          onSave={onSave}
+          onMore={(draft) => { setQuick(false); setEditing(draft); }}
+          onClose={() => setQuick(false)}
+        />
+      )}
 
       {editing && (
         <EntryEditor
