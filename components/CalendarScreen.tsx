@@ -162,7 +162,6 @@ export default function CalendarScreen({ entries, settings, companies, onSave, o
           fallbackCompanyId={entries.find((e) => e.company_id)?.company_id ?? null}
           locale={locale}
           onSave={onSave}
-          onMore={(draft) => { setQuick(false); setEditing(draft); }}
           onClose={() => setQuick(false)}
         />
       )}

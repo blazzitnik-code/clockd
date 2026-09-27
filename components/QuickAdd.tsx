@@ -3,7 +3,7 @@
 // "Add hours" — the fast path. Duration + worked/planned + live net estimate.
 // Remembers the last duration and company so a repeat shift is one tap.
 import { useState } from "react";
-import { Company, Entry, Settings, eur, fmtHours, netBeforeTax } from "@/lib/earnings";
+import { Company, Entry, Settings, eur, fmtHours, netBeforeTax, rawMinutes } from "@/lib/earnings";
 import { Locale, tr } from "@/lib/i18n";
 import { localISO } from "@/lib/dates";
 
@@ -29,11 +29,10 @@ interface Props {
   fallbackCompanyId: string | null;
   locale: Locale;
   onSave: (e: Partial<Entry>) => void;
-  onMore: (draft: Partial<Entry>) => void;
   onClose: () => void;
 }
 
-export default function QuickAdd({ settings, companies, defaultDate, fallbackCompanyId, locale, onSave, onMore, onClose }: Props) {
+export default function QuickAdd({ settings, companies, defaultDate, fallbackCompanyId, locale, onSave, onClose }: Props) {
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
   const hourly = companies.filter((c) => c.gross_rate != null || (c.rates?.length ?? 0) > 0);
   const [last] = useState(readLast);
@@ -45,12 +44,28 @@ export default function QuickAdd({ settings, companies, defaultDate, fallbackCom
     hourly[0]?.id ?? null;
   const [companyId, setCompanyId] = useState<string | null>(initialCompany);
 
+  // "More options" — expands in place
+  const [more, setMore] = useState(false);
+  const [label, setLabel] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [amount, setAmount] = useState("");
+  const [amountType, setAmountType] = useState<"gross" | "net">("net");
+
   const clamp = (m: number) => Math.max(15, Math.min(24 * 60, m));
+  const amt = parseFloat(amount.replace(",", "."));
+  const useAmount = amt > 0;
+  const useTimes = !useAmount && !!start && !!end;
   const draft: Partial<Entry> = {
-    work_date: date, status, company_id: companyId, duration_minutes: mins,
-    start_time: null, end_time: null, crosses_midnight: false,
-    gross_override: null, net_override: null, label: null,
+    work_date: date, status, company_id: companyId, label: label.trim() || null,
+    duration_minutes: useAmount || useTimes ? null : mins,
+    start_time: useTimes ? start : null,
+    end_time: useTimes ? end : null,
+    crosses_midnight: false,
+    gross_override: useAmount && amountType === "gross" ? amt : null,
+    net_override: useAmount && amountType === "net" ? amt : null,
   };
+  const shownMins = useTimes ? rawMinutes(start, end) : mins;
   const estimate = netBeforeTax([{ ...(draft as Entry), status: "worked" }], settings, companies);
 
   const todayIso = localISO(new Date());
@@ -88,7 +103,7 @@ export default function QuickAdd({ settings, companies, defaultDate, fallbackCom
         {/* duration */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "18px 0 6px" }}>
           <button type="button" onClick={() => setMins(clamp(mins - 15))} style={stepBtn} aria-label="−15 min">−</button>
-          <span className="figure" style={{ fontSize: 44, lineHeight: 1 }}>{fmtHours(mins / 60)}</span>
+          <span className="figure" style={{ fontSize: 44, lineHeight: 1, opacity: useAmount ? 0.3 : 1 }}>{fmtHours(shownMins / 60)}</span>
           <button type="button" onClick={() => setMins(clamp(mins + 15))} style={stepBtn} aria-label="+15 min">+</button>
         </div>
         <input type="range" min={15} max={12 * 60} step={15} value={Math.min(mins, 12 * 60)}
@@ -118,15 +133,59 @@ export default function QuickAdd({ settings, companies, defaultDate, fallbackCom
         {/* live estimate */}
         <div style={{ textAlign: "center", margin: "18px 0 14px" }}>
           <span className="figure" style={{ fontSize: 30, color: "var(--money)" }}>{eur(estimate, locale)}</span>
-          <span style={{ display: "block", fontSize: 13, color: "var(--text-soft)", marginTop: 2 }}>{L("estimatedNet")}</span>
+          <span style={{ display: "block", fontSize: 13, color: "var(--text-soft)", marginTop: 2 }}>
+            {status === "planned" ? L("estimatedPlanned") : L("estimatedNet")}
+          </span>
         </div>
 
         <button onClick={add} style={addBtn}>{L("add")}</button>
-        <button onClick={() => onMore(draft)} style={moreBtn}>{L("moreOptions")}</button>
+        <button onClick={() => setMore(!more)} style={moreBtn} aria-expanded={more}>
+          {more ? L("fewerOptions") : L("moreOptionsShort")} {more ? "▴" : "▾"}
+        </button>
+
+        {more && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 6, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+            <Opt title={L("timesInstead")} hint={L("timesHint")}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="time" value={start} onChange={(e) => setStart(e.target.value)} style={field} aria-label={L("start")} />
+                <span style={{ color: "var(--text-faint)" }}>–</span>
+                <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} style={field} aria-label={L("end")} />
+              </div>
+            </Opt>
+            <Opt title={L("amountInstead")} hint={L("amountHint")}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input type="number" inputMode="decimal" step="0.01" min="0" placeholder="€" value={amount}
+                  onChange={(e) => setAmount(e.target.value)} style={{ ...field, flex: 1 }} aria-label={L("amountInstead")} />
+                <div style={{ ...segmented, padding: 3, flex: "none" }}>
+                  <button onClick={() => setAmountType("net")} style={{ ...(amountType === "net" ? segActive : segIdle), padding: "7px 12px" }}>{L("net")}</button>
+                  <button onClick={() => setAmountType("gross")} style={{ ...(amountType === "gross" ? segActive : segIdle), padding: "7px 12px" }}>{L("gross")}</button>
+                </div>
+              </div>
+            </Opt>
+            <Opt title={L("label")}>
+              <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={L("labelHint")} style={field} />
+            </Opt>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+function Opt({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{title}</div>
+      {children}
+      {hint && <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 5 }}>{hint}</div>}
+    </div>
+  );
+}
+
+const field: React.CSSProperties = {
+  width: "100%", padding: "11px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)",
+  background: "var(--surface-2)", color: "var(--text)", fontSize: 16, minWidth: 0,
+};
 
 const overlay: React.CSSProperties = {
   position: "fixed", inset: 0, background: "rgba(8,4,18,0.65)",

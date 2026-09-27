@@ -68,6 +68,13 @@ input, select { font-family: inherit; }
   100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
+@keyframes delta-pop {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  12% { opacity: 1; transform: translateY(0) scale(1.05); }
+  20% { transform: scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
 @keyframes live-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.35; transform: scale(0.8); }

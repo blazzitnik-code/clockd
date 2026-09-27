@@ -109,10 +109,7 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
       </Group>
 
       {/* Rate */}
-      <Group title={L("hourlyRate")}>
-        <p style={{ fontSize: 12, color: "var(--text-soft)", margin: "0 0 10px", lineHeight: 1.5 }}>
-          {locale === "sl" ? "Privzeta urna postavka (če podjetje nima lastne)." : "Default rate used when a company has no rate set."}
-        </p>
+      <Group title={L("defaultRate")}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input
             type="number" step="0.01" min="0"
@@ -125,6 +122,7 @@ export default function SettingsScreen({ entries, settings, companies, onSave, o
         <div style={{ marginTop: 10 }}>
           <RateTypeToggle value={settings.rate_type ?? "gross"} onChange={(rate_type) => onSave({ rate_type })} locale={locale} />
         </div>
+        <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "8px 0 0", lineHeight: 1.5 }}>{L("defaultRateNote")}</p>
       </Group>
 
       {/* Rounding */}

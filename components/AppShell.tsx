@@ -18,7 +18,7 @@ export default function AppShell() {
   const [tab, setTab] = useState<Tab>("today");
   const locale = settings.locale as Locale;
   const L = (k: Parameters<typeof tr>[0]) => tr(k, locale);
-  const [toast, setToast] = useState<{ key: number; hours: string; from: number; to: number; suffix: string } | null>(null);
+  const [toast, setToast] = useState<{ key: number; hours: string; from?: number; to?: number; suffix: string } | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -35,6 +35,18 @@ export default function AppShell() {
     const finished = done(next);
     const wasFinished = done(prev);
     await saveEntry(patch);
+
+    // planned: acknowledge, but no money — it isn't earned yet
+    if (!prev && next.status === "planned") {
+      const when = new Date(next.work_date + "T00:00:00").toLocaleDateString(
+        locale === "sl" ? "sl-SI" : "en-GB", { weekday: "short", day: "numeric", month: "short" }
+      );
+      const what = next.gross_override != null || next.net_override != null
+        ? eur(netBeforeTax([{ ...next, status: "worked" }], settings, companies), locale)
+        : fmtHours(entryHours(next, settings));
+      setToast({ key: Date.now(), hours: `${what} ${L("planned_")} 📅`, suffix: `${L("plannedFor")} ${when}` });
+      return;
+    }
     if (!finished || wasFinished) return;
 
     const sameDay = entries.filter(
@@ -97,9 +109,13 @@ export default function AppShell() {
       {toast && (
         <div role="status" aria-live="polite" style={toastBox} onClick={() => setToast(null)}>
           <span style={{ fontSize: 17, fontWeight: 700 }}>{toast.hours}</span>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--money)" }}>
-            <CountUp key={toast.key} from={toast.from} to={toast.to} locale={locale} /> {toast.suffix}
-          </span>
+          {toast.to != null ? (
+            <span style={{ fontSize: 15, fontWeight: 600, color: "var(--money)" }}>
+              <CountUp key={toast.key} from={toast.from ?? 0} to={toast.to} locale={locale} /> {toast.suffix}
+            </span>
+          ) : (
+            <span style={{ fontSize: 14, color: "var(--text-soft)" }}>{toast.suffix}</span>
+          )}
         </div>
       )}
     </div>

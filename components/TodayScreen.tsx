@@ -6,6 +6,7 @@ import { Locale, tr } from "@/lib/i18n";
 import { localISO, weekRange } from "@/lib/dates";
 import EntryEditor from "./EntryEditor";
 import QuickAdd from "./QuickAdd";
+import AnimatedMoney from "./AnimatedMoney";
 
 interface Props {
   entries: Entry[];
@@ -62,11 +63,11 @@ export default function TodayScreen({ entries, settings, companies, onSave, onDe
       {/* This week — the one number that matters */}
       <div style={weekCard}>
         <span style={weekLabel}>{L("thisWeek")}</span>
-        <span className="figure" style={{ fontSize: 44, lineHeight: 1.05, marginTop: 6 }}>{eur(weekNet, locale)}</span>
+        <span style={{ fontSize: 44, lineHeight: 1.05, marginTop: 6 }}><AnimatedMoney value={weekNet} locale={locale} showDelta /></span>
         <span style={{ fontSize: 14, opacity: 0.8, marginTop: 4 }}>{fmtHours(weekHours)}</span>
         <div style={weekDivider} />
         <span style={{ fontSize: 15, fontWeight: 600 }}>
-          {L("today")} · <span className="figure">{eur(todayNet, locale)}</span>
+          {L("today")} · <AnimatedMoney value={todayNet} locale={locale} />
         </span>
       </div>
 
@@ -123,7 +124,6 @@ export default function TodayScreen({ entries, settings, companies, onSave, onDe
           fallbackCompanyId={lastCompanyId}
           locale={locale}
           onSave={onSave}
-          onMore={(draft) => { setQuick(false); setEditing(draft); }}
           onClose={() => setQuick(false)}
         />
       )}
@@ -150,36 +150,48 @@ export function EntryRow({ entry, settings, companies = [], locale, onClick }: {
   const isManual = entry.gross_override != null || entry.net_override != null;
   const isRunning = entry.status === "worked" && !entry.end_time && !isManual && !!entry.start_time;
   const h = entryHours(entry, settings);
-  const net = netBeforeTax([entry], settings, companies);
+  const isDuration = entry.duration_minutes != null && !entry.start_time;
+  // planned entries are priced as "worked" only for the estimate; they never count as earned
+  const net = netBeforeTax([isPlanned ? { ...entry, status: "worked" as const } : entry], settings, companies);
   const live = isRunning ? { ...entry, end_time: nowTime() } : null;
+  const company = entry.company_id ? companies.find((c) => c.id === entry.company_id) : undefined;
+  const status = isManual ? L("manualAmount") : isPlanned ? L("planned") : isRunning ? L("running") : L("worked");
+  const meta = [company?.name, entry.label || status].filter(Boolean).join(" · ");
+
+  const title = entry.start_time
+    ? `${entry.start_time.slice(0, 5)}${entry.end_time ? `–${entry.end_time.slice(0, 5)}` : "–…"}`
+    : isDuration ? `⏱ ${fmtHours(h)}` : "€";
+
   return (
     <button onClick={onClick} style={{ ...rowCard, ...(isPlanned ? rowPlanned : {}) }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3 }}>
-        <span style={{ fontWeight: 600, fontSize: 15 }}>
-          {entry.start_time
-            ? `${entry.start_time.slice(0, 5)}${entry.end_time ? `–${entry.end_time.slice(0, 5)}` : "–…"}`
-            : entry.duration_minutes != null
-            ? `⏱ ${fmtHours(entry.duration_minutes / 60)}`
-            : "●"}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, minWidth: 0 }}>
+        <span style={{ fontWeight: 600, fontSize: 15, color: isPlanned ? "var(--text-soft)" : "var(--text)" }}>
+          {title}
           {entry.crosses_midnight ? <sup style={{ color: "var(--ink)" }}> +1</sup> : null}
         </span>
-        <span style={{ fontSize: 13, color: "var(--text-soft)" }}>
-          {entry.label || (isManual ? (locale === "sl" ? "ročni vnos" : "manual") : isPlanned ? L("planned") : isRunning ? L("running") : L("worked"))}
+        <span style={{ fontSize: 13, color: "var(--text-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
+          {meta}
         </span>
       </div>
-      <div style={{ textAlign: "right" }}>
+      <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
         {isRunning ? (
           <>
-            <span className="figure" style={{ fontSize: 15, color: "var(--active)" }}>{fmtHours(rawMinutes(entry.start_time, live!.end_time) / 60)}</span>
-            <span style={{ display: "block", fontSize: 13, color: "var(--text-soft)" }}>{eur(netBeforeTax([live!], settings, companies), locale)} {L("soFar")}</span>
+            <span className="figure" style={{ fontSize: 15, color: "var(--active)" }}>
+              {fmtHours(rawMinutes(entry.start_time, live!.end_time) / 60)} · {eur(netBeforeTax([live!], settings, companies), locale)}
+            </span>
+            <span style={{ display: "block", fontSize: 12, color: "var(--text-soft)" }}>{L("soFar")}</span>
           </>
         ) : isPlanned ? (
-          <span style={{ color: "var(--text-faint)", fontSize: 14 }}>—</span>
-        ) : (
           <>
-            {!isManual && <span className="figure" style={{ fontSize: 15 }}>{fmtHours(h)}</span>}
-            <span style={{ display: "block", fontSize: 13, color: "var(--text-soft)" }}>{eur(net, locale)}</span>
+            <span className="figure" style={{ fontSize: 15, color: "var(--text-soft)" }}>
+              {isManual ? eur(net, locale) : `${fmtHours(h)} · ${eur(net, locale)}`}
+            </span>
+            <span style={{ display: "block", fontSize: 12, color: "var(--text-faint)" }}>{L("estimated")}</span>
           </>
+        ) : (
+          <span className="figure" style={{ fontSize: 15 }}>
+            {isManual || isDuration ? eur(net, locale) : <>{fmtHours(h)} · {eur(net, locale)}</>}
+          </span>
         )}
       </div>
     </button>
